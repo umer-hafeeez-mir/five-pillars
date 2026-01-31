@@ -1,1 +1,24 @@
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply bg-white text-slate-900;
+}
+
+.container-page {
+  @apply max-w-4xl mx-auto px-4;
+}
+
+.soft-shadow {
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.06);
+}
