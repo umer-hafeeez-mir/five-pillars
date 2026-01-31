@@ -17,20 +17,30 @@ export default function HomePage() {
     "zakat"
   );
 
-  // Persist zakat inputs (anonymous)
-  const [z, setZ] = usePersistedState("fp_zakat_form_v1", {
+  /**
+   * IMPORTANT:
+   * We are bumping the storage key to v2 because we've added new fields (goldRate/silverRate).
+   * This avoids older localStorage values breaking the new UI.
+   */
+  const [z, setZ] = usePersistedState("fp_zakat_form_v2", {
     cash: 0,
     bank: 0,
+
     goldGrams: 0,
+    goldRate: 0, // user-entered
+
     silverGrams: 0,
+    silverRate: 0, // user-entered
+
     investments: 0,
     businessAssets: 0,
     moneyLent: 0,
+
     debts: 0
   });
 
   const pillar = PILLARS[active];
-  const zakatResult = active === "zakat" ? calculateZakat(z) : null;
+  const zakatResult = active === "zakat" ? calculateZakat(z as any) : null;
 
   return (
     <main className="min-h-screen">
@@ -77,7 +87,7 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
                   />
                   <Field
-                    label="Cash in bank"
+                    label="Bank balance"
                     prefix="₹"
                     value={z.bank}
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
@@ -87,20 +97,37 @@ export default function HomePage() {
 
               <Card title="PRECIOUS METALS">
                 <div className="space-y-3">
+                  {/* Gold */}
                   <Field
                     label="Gold (grams)"
                     suffix="g"
                     value={z.goldGrams}
-                    onChange={(v) =>
-                      setZ((s: any) => ({ ...s, goldGrams: v }))
-                    }
+                    onChange={(v) => setZ((s: any) => ({ ...s, goldGrams: v }))}
                   />
+                  <Field
+                    label="Gold rate per gram"
+                    hint="Enter current market rate"
+                    prefix="₹"
+                    value={z.goldRate}
+                    onChange={(v) => setZ((s: any) => ({ ...s, goldRate: v }))}
+                  />
+
+                  {/* Silver */}
                   <Field
                     label="Silver (grams)"
                     suffix="g"
                     value={z.silverGrams}
                     onChange={(v) =>
                       setZ((s: any) => ({ ...s, silverGrams: v }))
+                    }
+                  />
+                  <Field
+                    label="Silver rate per gram"
+                    hint="Used for Nisab threshold (silver)"
+                    prefix="₹"
+                    value={z.silverRate}
+                    onChange={(v) =>
+                      setZ((s: any) => ({ ...s, silverRate: v }))
                     }
                   />
                 </div>
@@ -150,31 +177,40 @@ export default function HomePage() {
               <Accordion title="About Zakat Calculation">
                 <div className="text-sm text-slate-600 leading-relaxed space-y-2">
                   <p>
-                    This estimates Zakat at <b>2.5%</b> on your net zakatable
-                    wealth (assets minus debts).
+                    This estimates Zakat at <b>2.5%</b> on your net zakatable wealth (assets minus debts).
                   </p>
                   <p>
-                    It uses the <b>silver nisab</b> by default (commonly used
-                    because it lowers the threshold).
+                    It uses the <b>silver nisab</b> by default. Enter the current <b>silver rate per gram</b> to compute the nisab threshold.
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Rates are entered manually to keep the app private and fully offline.
                   </p>
                 </div>
               </Accordion>
 
-              {/* (3) Spacer so the form doesn’t get hidden under the fixed tray */}
+              {/* Spacer so the form doesn’t get hidden under the fixed tray */}
               <div className="h-[320px]" />
             </div>
 
-            {/* (1) Fixed Bottom Tray: Result + Calculate + Reset stay always on screen */}
+            {/* Fixed Bottom Tray: Result + Actions */}
             <div className="fixed left-0 right-0 bottom-0 z-50">
-              {/* subtle fade to blend the tray with the page */}
               <div className="h-10 bg-gradient-to-t from-white to-transparent" />
 
               <div className="px-3 pb-4">
                 <div className="max-w-md mx-auto space-y-3">
-                  {/* RESULT (only here — (2) no in-flow Result block) */}
                   {zakatResult && (
                     <Card title="RESULT" variant="result">
-                      {zakatResult.eligible ? (
+                      {/* If silverRate is 0, nisab can't be computed meaningfully */}
+                      {z.silverRate <= 0 ? (
+                        <div className="text-slate-700">
+                          <div className="text-sm font-medium text-brand-900">
+                            Enter silver rate to calculate Nisab
+                          </div>
+                          <div className="mt-2 text-[11px] text-slate-600">
+                            Add <b>Silver rate per gram</b> above to compute the nisab threshold and zakat due.
+                          </div>
+                        </div>
+                      ) : zakatResult.eligible ? (
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <div className="text-xs text-slate-700">
@@ -188,7 +224,6 @@ export default function HomePage() {
                               {zakatResult.nisab.toFixed(2)}
                             </div>
                           </div>
-
                           <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-brand-100 text-brand-900 border-brand-200">
                             Due
                           </span>
@@ -207,7 +242,6 @@ export default function HomePage() {
                               {zakatResult.nisab.toFixed(2)}
                             </div>
                           </div>
-
                           <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-slate-100 text-slate-700 border-slate-200">
                             Not Due
                           </span>
@@ -216,22 +250,16 @@ export default function HomePage() {
                     </Card>
                   )}
 
-                  <button
-                    onClick={() =>
-                      window.scrollTo({ top: 0, behavior: "smooth" })
-                    }
-                    className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-4 font-medium soft-shadow"
-                  >
-                    Download PDF
-                  </button>
-
+                  {/* Keep Reset only (you can add Download PDF later) */}
                   <button
                     onClick={() =>
                       setZ({
                         cash: 0,
                         bank: 0,
                         goldGrams: 0,
+                        goldRate: 0,
                         silverGrams: 0,
+                        silverRate: 0,
                         investments: 0,
                         businessAssets: 0,
                         moneyLent: 0,
