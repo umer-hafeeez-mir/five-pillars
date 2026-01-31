@@ -165,7 +165,7 @@ export default function HomePage() {
               </Accordion>
 
               {/* (3) Spacer so the form doesn’t get hidden under the fixed tray */}
-              <div className="h-[280px]" />
+              <div className="h-[320px]" />
             </div>
 
             {/* (1) Fixed Bottom Tray: Result + Calculate + Reset stay always on screen */}
