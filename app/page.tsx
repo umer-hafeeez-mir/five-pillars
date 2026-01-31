@@ -1,1 +1,212 @@
 
+"use client";
+
+import InstallBanner from "@/components/InstallBanner";
+import PillarTabs from "@/components/PillarTabs";
+import PillarHeader from "@/components/PillarHeader";
+import Card from "@/components/Card";
+import Field from "@/components/Field";
+import Accordion from "@/components/Accordion";
+import usePersistedState from "@/lib/usePersistedState";
+import { PILLARS, PillarKey } from "@/lib/pillars";
+import { calculateZakat } from "@/lib/zakat";
+
+export default function HomePage() {
+  // Persist active tab (anonymous)
+  const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "salah");
+
+  // Persist zakat inputs (anonymous)
+  const [z, setZ] = usePersistedState("fp_zakat_form_v1", {
+    cash: 0,
+    bank: 0,
+    goldGrams: 0,
+    silverGrams: 0,
+    investments: 0,
+    businessAssets: 0,
+    moneyLent: 0,
+    debts: 0
+  });
+
+  const pillar = PILLARS[active];
+
+  const zakatResult = active === "zakat" ? calculateZakat(z) : null;
+
+  return (
+    <main className="min-h-screen">
+      <InstallBanner />
+
+      <header className="container-page pt-10 pb-4 text-center">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+          Five Pillars of Islam
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">Simple · Private · Offline</p>
+
+        <div className="mt-6">
+          <PillarTabs active={active} onChange={setActive} />
+        </div>
+      </header>
+
+      <section className="container-page pb-16">
+        <PillarHeader title={pillar.title} subtitle={pillar.subtitle} icon={pillar.icon} />
+
+        {/* Non-zakat pages */}
+        {active !== "zakat" ? (
+          <div className="mt-6 space-y-5">
+            {pillar.blocks.map((b, idx) => (
+              <Card key={idx} title={b.title}>
+                {b.content}
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <>
+            {/* Zakat calculator */}
+            <div className="mt-6 space-y-4">
+              <Card title="CASH & SAVINGS">
+                <div className="space-y-3">
+                  <Field
+                    label="Cash in hand"
+                    hint="Money you currently have"
+                    prefix="₹"
+                    value={z.cash}
+                    onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
+                  />
+                  <Field
+                    label="Bank balance"
+                    prefix="₹"
+                    value={z.bank}
+                    onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
+                  />
+                </div>
+              </Card>
+
+              <Card title="PRECIOUS METALS">
+                <div className="space-y-3">
+                  <Field
+                    label="Gold (grams)"
+                    suffix="g"
+                    value={z.goldGrams}
+                    onChange={(v) => setZ((s: any) => ({ ...s, goldGrams: v }))}
+                  />
+                  <Field
+                    label="Silver (grams)"
+                    suffix="g"
+                    value={z.silverGrams}
+                    onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
+                  />
+                </div>
+              </Card>
+
+              <Card title="OTHER ASSETS">
+                <div className="space-y-3">
+                  <Field
+                    label="Investments / Savings"
+                    prefix="₹"
+                    value={z.investments}
+                    onChange={(v) => setZ((s: any) => ({ ...s, investments: v }))}
+                  />
+                  <Field
+                    label="Business assets"
+                    prefix="₹"
+                    value={z.businessAssets}
+                    onChange={(v) => setZ((s: any) => ({ ...s, businessAssets: v }))}
+                  />
+                  <Field
+                    label="Money lent to others"
+                    prefix="₹"
+                    value={z.moneyLent}
+                    onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
+                  />
+                </div>
+              </Card>
+
+              <Card title="DEDUCTIONS">
+                <div className="space-y-3">
+                  <Field
+                    label="Debts & liabilities"
+                    hint="Money you owe and must repay"
+                    prefix="₹"
+                    value={z.debts}
+                    onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
+                  />
+                </div>
+              </Card>
+
+              <Accordion title="About Zakat Calculation">
+                <div className="text-sm text-slate-600 leading-relaxed space-y-2">
+                  <p>
+                    This estimates Zakat at <b>2.5%</b> on your net zakatable wealth (assets minus debts).
+                  </p>
+                  <p>
+                    It uses the <b>silver nisab</b> by default (commonly used because it lowers the threshold).
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Metal prices are set in code. You can later add live prices with an API.
+                  </p>
+                </div>
+              </Accordion>
+
+              {/* Sticky action like your screenshot */}
+              <div className="sticky bottom-4 pt-2">
+                <div className="max-w-md mx-auto space-y-2">
+                  <button
+                    onClick={() =>
+                      document.getElementById("zakat-result")?.scrollIntoView({ behavior: "smooth" })
+                    }
+                    className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-4 font-medium soft-shadow"
+                  >
+                    Calculate Zakat
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setZ({
+                        cash: 0,
+                        bank: 0,
+                        goldGrams: 0,
+                        silverGrams: 0,
+                        investments: 0,
+                        businessAssets: 0,
+                        moneyLent: 0,
+                        debts: 0
+                      })
+                    }
+                    className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 text-sm font-medium"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              {/* Result */}
+              {zakatResult && (
+                <div id="zakat-result" className="max-w-md mx-auto mt-6">
+                  <Card title="RESULT">
+                    {zakatResult.eligible ? (
+                      <div className="text-center">
+                        <div className="text-sm text-slate-600">Zakat to Pay</div>
+                        <div className="mt-2 text-3xl font-semibold text-brand-900">
+                          ₹ {zakatResult.zakat.toFixed(2)}
+                        </div>
+                        <div className="mt-3 text-xs text-slate-500">
+                          Net zakatable amount: ₹ {zakatResult.net.toFixed(2)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-slate-700">
+                        You are below Nisab. No Zakat due.
+                        <div className="mt-3 text-xs text-slate-500">
+                          Net amount: ₹ {zakatResult.net.toFixed(2)} · Nisab: ₹ {zakatResult.nisab.toFixed(2)}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </section>
+    </main>
+  );
+}
