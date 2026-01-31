@@ -108,7 +108,7 @@ export const PILLARS: Record<
     tab: "Zakat",
     tabHint: "Charity",
     icon: "crescent",
-    title: "Zakat",
+    title: "Calculate Zakat",
     subtitle: "Purification of Wealth",
     blocks: [{ title: "INFO", content: null }]
   },
