@@ -48,3 +48,5 @@ Tabbed “Five Pillars of Islam” app with a Zakat calculator.
 - Update default gold/silver prices in lib/zakat.ts
 - Change default tab in app/page.tsx:
   usePersistedState(..., "salah") → "zakat"
+
+  
