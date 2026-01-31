@@ -77,7 +77,7 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
                   />
                   <Field
-                    label="Bank balance"
+                    label="Cash in bank"
                     prefix="₹"
                     value={z.bank}
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
