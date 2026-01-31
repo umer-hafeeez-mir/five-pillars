@@ -157,10 +157,6 @@ export default function HomePage() {
                     It uses the <b>silver nisab</b> by default (commonly used
                     because it lowers the threshold).
                   </p>
-                  <p className="text-xs text-slate-500">
-                    Metal prices are set in code. You can later add live prices
-                    with an API.
-                  </p>
                 </div>
               </Accordion>
 
@@ -226,7 +222,7 @@ export default function HomePage() {
                     }
                     className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-4 font-medium soft-shadow"
                   >
-                    Calculate Zakat
+                    Download PDF
                   </button>
 
                   <button
