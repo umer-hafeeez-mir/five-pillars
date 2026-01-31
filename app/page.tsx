@@ -13,7 +13,7 @@ import { calculateZakat } from "@/lib/zakat";
 
 export default function HomePage() {
   // Persist active tab (anonymous)
-  const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "salah");
+  const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1","zakat");
 
   // Persist zakat inputs (anonymous)
   const [z, setZ] = usePersistedState("fp_zakat_form_v1", {
