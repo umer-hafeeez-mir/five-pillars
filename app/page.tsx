@@ -181,7 +181,7 @@ export default function HomePage() {
               {/* Result */}
               {zakatResult && (
                 <div id="zakat-result" className="max-w-md mx-auto mt-6">
-                  <Card title="RESULT">
+                  <Card title="RESULT" variant="result">
                     {zakatResult.eligible ? (
                       <div className="text-center">
                         <div className="text-sm text-slate-600">Zakat to Pay</div>
