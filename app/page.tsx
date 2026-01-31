@@ -77,7 +77,7 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
                   />
                   <Field
-                    label="Bank balance"
+                    label="Cash in bank"
                     prefix="₹"
                     value={z.bank}
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
@@ -156,6 +156,10 @@ export default function HomePage() {
                   <p>
                     It uses the <b>silver nisab</b> by default (commonly used
                     because it lowers the threshold).
+                  </p>
+                  <div className="text-sm text-slate-400 leading-relaxed space-y-2">
+                  <p>
+                    Powered by XDelivery
                   </p>
                 </div>
               </Accordion>
