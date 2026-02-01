@@ -80,7 +80,9 @@ export default function HomePage() {
       `Status: ${zakatResult.eligible ? "Due" : "Not Due"}`,
       `Zakat: ₹ ${formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}`,
       `Net: ₹ ${formatINR(zakatResult.net)}`,
-      `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`
+      `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`,
+      "",
+      "Calculated offline"
     ].join("\n");
 
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
@@ -120,7 +122,7 @@ export default function HomePage() {
         return;
       }
     } catch {
-      return;
+      // ignore
     }
 
     try {
@@ -129,6 +131,12 @@ export default function HomePage() {
       window.prompt("Copy this text:", text);
     }
   };
+
+  // iOS safe-area padding (build-safe)
+  const safeAreaBottom =
+    typeof window !== "undefined"
+      ? `calc(env(safe-area-inset-bottom, 0px) + 16px)`
+      : "16px";
 
   return (
     <main className="min-h-screen">
@@ -308,17 +316,17 @@ export default function HomePage() {
                 </div>
               </Accordion>
 
-              {/* Spacer: small, just enough to prevent overlap (NOT a visible “banner”) */}
+              {/* Spacer: just enough for the floating stack */}
               <div className="h-[320px]" />
             </div>
 
-            {/* FLOATING FIXED STACK (no white slab background) */}
+            {/* FLOATING FIXED STACK (no white banner) */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
-              <div className="px-3 pb-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
-                <div className="max-w-md mx-auto space-y-3 pointer-events-auto">
-                  {/* subtle “anchoring” shadow behind the stack */}
-                  <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+              {/* small fade to “separate” from form without big slab */}
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none" />
 
+              <div className="px-3" style={{ paddingBottom: safeAreaBottom }}>
+                <div className="max-w-md mx-auto space-y-3 pointer-events-auto">
                   {zakatResult && (
                     <Card title="RESULT" variant="result">
                       {zakatResult.breakdown?.nisabRateMissing ? (
