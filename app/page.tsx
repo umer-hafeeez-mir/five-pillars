@@ -56,11 +56,7 @@ function formatINR(n: number) {
 }
 
 export default function HomePage() {
-  const [active, setActive] = usePersistedState<PillarKey>(
-    "fp_active_tab_v1",
-    "zakat"
-  );
-
+  const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
   const [z, setZ] = usePersistedState<ZState>("fp_zakat_form_v3", ZAKAT_DEFAULTS);
 
   const pillar = PILLARS[active];
@@ -132,15 +128,13 @@ export default function HomePage() {
     }
   };
 
-  // iOS safe-area padding (build-safe)
   const safeAreaBottom =
-  typeof window !== "undefined"
-    ? "calc(env(safe-area-inset-bottom, 0px) + 16px)"
-    : "16px";
+    typeof window !== "undefined"
+      ? "calc(env(safe-area-inset-bottom, 0px) + 16px)"
+      : "16px";
 
-return (
-  <main className="min-h-screen">
-
+  return (
+    <main className="min-h-screen">
       <header className="container-page pt-10 pb-4 text-center">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
           Five Pillars of Islam
@@ -165,7 +159,6 @@ return (
           </div>
         ) : (
           <>
-            {/* FORM */}
             <div className="mt-6 space-y-4">
               <Card title="CASH & SAVINGS">
                 <div className="space-y-3">
@@ -234,7 +227,6 @@ return (
                     value={z.goldGrams}
                     onChange={(v) => setZ((s) => ({ ...s, goldGrams: v }))}
                   />
-
                   <Field
                     label="Gold rate per gram"
                     prefix="₹"
@@ -249,7 +241,6 @@ return (
                     value={z.silverGrams}
                     onChange={(v) => setZ((s) => ({ ...s, silverGrams: v }))}
                   />
-
                   <Field
                     label="Silver rate per gram"
                     prefix="₹"
@@ -300,8 +291,8 @@ return (
                   <div>
                     <div className="font-semibold text-slate-900">1) Assets</div>
                     <p className="mt-1">
-                      Assets include cash, bank balance, gold value, silver value,
-                      investments/savings, business assets, and money lent out.
+                      Assets include cash, bank balance, gold value, silver value, investments/savings,
+                      business assets, and money lent out.
                     </p>
                   </div>
                   <div>
@@ -319,13 +310,10 @@ return (
                 </div>
               </Accordion>
 
-              {/* Spacer: just enough for the floating stack */}
               <div className="h-[320px]" />
             </div>
 
-            {/* FLOATING FIXED STACK (no white banner) */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
-              {/* small fade to “separate” from form without big slab */}
               <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none" />
 
               <div className="px-3" style={{ paddingBottom: safeAreaBottom }}>
@@ -361,29 +349,11 @@ return (
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <div className="text-xs text-slate-700">Below Nisab</div>
-                            <div className="mt-1 text-2xl font-bold text-slate-800 tracking-tight">
-                              ₹ 0.00
-                            </div>
+                            <div className="mt-1 text-2xl font-bold text-slate-800 tracking-tight">₹ 0.00</div>
                             <div className="mt-1 text-[11px] text-slate-600">
                               Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} ({zakatResult.basis})
                             </div>
-
-                            <span className="text-[11px] px-2 py-1 rounded-full font-semibold border bg-slate-100 text-slate-700 border-slate-200">
-                              Not Due
-                            </span>
                           </div>
-                        )}
-                      </Card>
-                    )}
-
-                    {/* ACTIONS (pop + consistent) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={downloadPdf}
-                        className="w-full rounded-xl bg-brand-800 text-white py-4 font-semibold soft-shadow transition hover:bg-brand-900 active:scale-[0.99]"
-                      >
-                        Download PDF
-                      </button>
 
                           <span className="text-[11px] px-2 py-1 rounded-full font-semibold border bg-slate-100 text-slate-700 border-slate-200">
                             Not Due
