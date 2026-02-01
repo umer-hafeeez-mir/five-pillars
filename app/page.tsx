@@ -134,12 +134,13 @@ export default function HomePage() {
 
   // iOS safe-area padding (build-safe)
   const safeAreaBottom =
-    typeof window !== "undefined"
-      ? `calc(env(safe-area-inset-bottom, 0px) + 16px)`
-      : "16px";
+  typeof window !== "undefined"
+    ? "calc(env(safe-area-inset-bottom, 0px) + 16px)"
+    : "16px";
 
-  return (
-    <main className="min-h-screen">
+return (
+  <main className="min-h-screen">
+
       <header className="container-page pt-10 pb-4 text-center">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
           Five Pillars of Islam
