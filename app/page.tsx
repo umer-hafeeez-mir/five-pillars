@@ -11,26 +11,58 @@ import { PILLARS, PillarKey } from "@/lib/pillars";
 import { calculateZakat } from "@/lib/zakat";
 
 export default function HomePage() {
-  // Persist active tab (anonymous)
   const [active, setActive] = usePersistedState<PillarKey>(
     "fp_active_tab_v1",
     "zakat"
   );
 
-  // Persist zakat inputs (anonymous)
-  const [z, setZ] = usePersistedState("fp_zakat_form_v1", {
-    cash: 0,
-    bank: 0,
-    goldGrams: 0,
-    silverGrams: 0,
-    investments: 0,
-    businessAssets: 0,
-    moneyLent: 0,
-    debts: 0
+  /**
+   * Bump storage key because we added:
+   * - goldRate, silverRate
+   * - nisabBasis
+   * and we now allow "" instead of 0.
+   */
+  const [z, setZ] = usePersistedState("fp_zakat_form_v3", {
+    cash: "" as number | "",
+    bank: "" as number | "",
+
+    goldGrams: "" as number | "",
+    goldRate: "" as number | "",
+
+    silverGrams: "" as number | "",
+    silverRate: "" as number | "",
+
+    investments: "" as number | "",
+    businessAssets: "" as number | "",
+    moneyLent: "" as number | "",
+
+    debts: "" as number | "",
+
+    nisabBasis: "silver" as "silver" | "gold"
   });
 
   const pillar = PILLARS[active];
-  const zakatResult = active === "zakat" ? calculateZakat(z) : null;
+  const zakatResult = active === "zakat" ? calculateZakat(z as any) : null;
+
+  const resetZakat = () =>
+    setZ({
+      cash: "",
+      bank: "",
+
+      goldGrams: "",
+      goldRate: "",
+
+      silverGrams: "",
+      silverRate: "",
+
+      investments: "",
+      businessAssets: "",
+      moneyLent: "",
+
+      debts: "",
+
+      nisabBasis: "silver"
+    });
 
   return (
     <main className="min-h-screen">
@@ -54,7 +86,6 @@ export default function HomePage() {
           icon={pillar.icon}
         />
 
-        {/* Non-zakat pages */}
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
             {pillar.blocks.map((b, idx) => (
@@ -77,7 +108,7 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
                   />
                   <Field
-                    label="Cash in bank"
+                    label="Bank balance"
                     prefix="₹"
                     value={z.bank}
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
@@ -91,10 +122,16 @@ export default function HomePage() {
                     label="Gold (grams)"
                     suffix="g"
                     value={z.goldGrams}
-                    onChange={(v) =>
-                      setZ((s: any) => ({ ...s, goldGrams: v }))
-                    }
+                    onChange={(v) => setZ((s: any) => ({ ...s, goldGrams: v }))}
                   />
+                  <Field
+                    label="Gold rate per gram"
+                    hint="Enter current market rate"
+                    prefix="₹"
+                    value={z.goldRate}
+                    onChange={(v) => setZ((s: any) => ({ ...s, goldRate: v }))}
+                  />
+
                   <Field
                     label="Silver (grams)"
                     suffix="g"
@@ -103,6 +140,58 @@ export default function HomePage() {
                       setZ((s: any) => ({ ...s, silverGrams: v }))
                     }
                   />
+                  <Field
+                    label="Silver rate per gram"
+                    hint="Enter current market rate"
+                    prefix="₹"
+                    value={z.silverRate}
+                    onChange={(v) =>
+                      setZ((s: any) => ({ ...s, silverRate: v }))
+                    }
+                  />
+
+                  {/* ✅ Nisab toggle */}
+                  <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-sm font-medium text-slate-800">
+                      Nisab basis
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setZ((s: any) => ({ ...s, nisabBasis: "silver" }))
+                        }
+                        className={[
+                          "flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition",
+                          z.nisabBasis === "silver"
+                            ? "border-brand-300 bg-brand-50 text-brand-900"
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        ].join(" ")}
+                      >
+                        Silver (595g)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setZ((s: any) => ({ ...s, nisabBasis: "gold" }))
+                        }
+                        className={[
+                          "flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition",
+                          z.nisabBasis === "gold"
+                            ? "border-brand-300 bg-brand-50 text-brand-900"
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        ].join(" ")}
+                      >
+                        Gold (85g)
+                      </button>
+                    </div>
+
+                    <div className="mt-2 text-xs text-slate-500">
+                      This app uses your selected basis to compute the nisab
+                      threshold.
+                    </div>
+                  </div>
                 </div>
               </Card>
 
@@ -147,34 +236,87 @@ export default function HomePage() {
                 </div>
               </Card>
 
-              <Accordion title="About Zakat Calculation">
-                <div className="text-sm text-slate-600 leading-relaxed space-y-2">
-                  <p>
-                    This estimates Zakat at <b>2.5%</b> on your net zakatable
-                    wealth (assets minus debts).
-                  </p>
-                  <p>
-                    It uses the <b>silver nisab</b> by default (commonly used
-                    because it lowers the threshold).
+              {/* ✅ In-app documentation */}
+              <Accordion title="How Zakat is calculated">
+                <div className="text-sm text-slate-700 leading-relaxed space-y-3">
+                  <div>
+                    <div className="font-semibold text-slate-900">1) Assets</div>
+                    <p className="mt-1">
+                      Assets include cash, bank balance, gold value, silver value,
+                      investments/savings, business assets, and money lent out.
+                    </p>
+                    <p className="mt-2 text-xs text-slate-600">
+                      Gold value = (Gold grams × Gold rate per gram) <br />
+                      Silver value = (Silver grams × Silver rate per gram)
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="font-semibold text-slate-900">
+                      2) Net zakatable wealth
+                    </div>
+                    <p className="mt-1">
+                      Net = Total assets − Debts & liabilities (never below 0).
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="font-semibold text-slate-900">3) Nisab</div>
+                    <p className="mt-1">
+                      You can choose whether nisab is based on silver or gold:
+                    </p>
+                    <ul className="mt-2 list-disc pl-5 text-xs text-slate-600 space-y-1">
+                      <li>Silver nisab = 595g × Silver rate per gram</li>
+                      <li>Gold nisab = 85g × Gold rate per gram</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <div className="font-semibold text-slate-900">
+                      4) Zakat due
+                    </div>
+                    <p className="mt-1">
+                      If Net ≥ Nisab, then Zakat = 2.5% of Net.
+                    </p>
+                    <p className="mt-2 text-xs text-slate-600">
+                      Zakat rate used: 2.5% (0.025)
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Note: This is an estimate for general use. Local scholarly
+                    guidance may differ for specific cases.
                   </p>
                 </div>
               </Accordion>
 
-              {/* (3) Spacer so the form doesn’t get hidden under the fixed tray */}
+              {/* Spacer for fixed tray */}
               <div className="h-[320px]" />
             </div>
 
-            {/* (1) Fixed Bottom Tray: Result + Calculate + Reset stay always on screen */}
+            {/* Fixed Bottom Tray */}
             <div className="fixed left-0 right-0 bottom-0 z-50">
-              {/* subtle fade to blend the tray with the page */}
               <div className="h-10 bg-gradient-to-t from-white to-transparent" />
 
               <div className="px-3 pb-4">
                 <div className="max-w-md mx-auto space-y-3">
-                  {/* RESULT (only here — (2) no in-flow Result block) */}
                   {zakatResult && (
                     <Card title="RESULT" variant="result">
-                      {zakatResult.eligible ? (
+                      {zakatResult.breakdown.nisabRateMissing ? (
+                        <div className="text-slate-800">
+                          <div className="text-sm font-medium text-brand-900">
+                            Enter{" "}
+                            {z.nisabBasis === "silver"
+                              ? "silver rate"
+                              : "gold rate"}{" "}
+                            to calculate Nisab
+                          </div>
+                          <div className="mt-2 text-[11px] text-slate-600">
+                            You selected <b>{z.nisabBasis}</b> as your nisab basis.
+                            Add its rate per gram above to compute eligibility.
+                          </div>
+                        </div>
+                      ) : zakatResult.eligible ? (
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <div className="text-xs text-slate-700">
@@ -185,7 +327,8 @@ export default function HomePage() {
                             </div>
                             <div className="mt-1 text-[11px] text-slate-600">
                               Net: ₹ {zakatResult.net.toFixed(2)} · Nisab: ₹{" "}
-                              {zakatResult.nisab.toFixed(2)}
+                              {zakatResult.nisab.toFixed(2)} (
+                              {zakatResult.basis})
                             </div>
                           </div>
 
@@ -204,7 +347,7 @@ export default function HomePage() {
                             </div>
                             <div className="mt-1 text-[11px] text-slate-600">
                               Net: ₹ {zakatResult.net.toFixed(2)} · Nisab: ₹{" "}
-                              {zakatResult.nisab.toFixed(2)}
+                              {zakatResult.nisab.toFixed(2)} ({zakatResult.basis})
                             </div>
                           </div>
 
@@ -217,27 +360,7 @@ export default function HomePage() {
                   )}
 
                   <button
-                    onClick={() =>
-                      window.scrollTo({ top: 0, behavior: "smooth" })
-                    }
-                    className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-4 font-medium soft-shadow"
-                  >
-                    Download PDF
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      setZ({
-                        cash: 0,
-                        bank: 0,
-                        goldGrams: 0,
-                        silverGrams: 0,
-                        investments: 0,
-                        businessAssets: 0,
-                        moneyLent: 0,
-                        debts: 0
-                      })
-                    }
+                    onClick={resetZakat}
                     className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 text-sm font-medium"
                   >
                     Reset
