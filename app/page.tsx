@@ -69,6 +69,30 @@ export default function HomePage() {
 
   const resetZakat = () => setZ(ZAKAT_DEFAULTS);
 
+  // Placeholder handler (we'll implement real PDF later)
+  const downloadPdf = () => {
+    // For now, just download a simple text as a placeholder.
+    // Next step: generate an actual PDF offline.
+    const lines: string[] = [];
+    lines.push("Zakat Calculation Summary");
+    lines.push("------------------------");
+    lines.push(`Nisab basis: ${z.nisabBasis}`);
+    if (zakatResult) {
+      lines.push(`Net: ₹ ${zakatResult.net.toFixed(2)}`);
+      lines.push(`Nisab: ₹ ${zakatResult.nisab.toFixed(2)}`);
+      lines.push(`Zakat due: ₹ ${zakatResult.zakat.toFixed(2)}`);
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "zakat-summary.txt";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="min-h-screen">
       <InstallBanner />
@@ -112,7 +136,7 @@ export default function HomePage() {
                     onChange={(v) => setZ((s) => ({ ...s, cash: v }))}
                   />
                   <Field
-                    label="Bank balance"
+                    label="Cash in bank"
                     prefix="₹"
                     value={z.bank}
                     onChange={(v) => setZ((s) => ({ ...s, bank: v }))}
@@ -280,11 +304,6 @@ export default function HomePage() {
                       If Net ≥ Nisab, then Zakat = 2.5% of Net.
                     </p>
                   </div>
-
-                  <p className="text-xs text-slate-500">
-                    Note: This is an estimate for general use. Local scholarly
-                    guidance may differ for specific cases.
-                  </p>
                 </div>
               </Accordion>
 
@@ -309,17 +328,14 @@ export default function HomePage() {
                             to calculate Nisab
                           </div>
                           <div className="mt-2 text-[11px] text-slate-600">
-                            You selected <b>{z.nisabBasis}</b> as your nisab
-                            basis. Add its rate per gram above to compute
-                            eligibility.
+                            You selected <b>{z.nisabBasis}</b> as your nisab basis.
+                            Add its rate per gram above to compute eligibility.
                           </div>
                         </div>
                       ) : zakatResult.eligible ? (
                         <div className="flex items-center justify-between gap-4">
                           <div>
-                            <div className="text-xs text-slate-700">
-                              Zakat to Pay
-                            </div>
+                            <div className="text-xs text-slate-700">Zakat to Pay</div>
                             <div className="mt-1 text-2xl font-bold text-brand-900 tracking-tight">
                               ₹ {zakatResult.zakat.toFixed(2)}
                             </div>
@@ -328,16 +344,11 @@ export default function HomePage() {
                               {zakatResult.nisab.toFixed(2)} ({zakatResult.basis})
                             </div>
                           </div>
-                          <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-brand-100 text-brand-900 border-brand-200">
-                            Due
-                          </span>
                         </div>
                       ) : (
                         <div className="flex items-center justify-between gap-4">
                           <div>
-                            <div className="text-xs text-slate-700">
-                              Below Nisab
-                            </div>
+                            <div className="text-xs text-slate-700">Below Nisab</div>
                             <div className="mt-1 text-2xl font-bold text-slate-800 tracking-tight">
                               ₹ 0.00
                             </div>
@@ -346,13 +357,18 @@ export default function HomePage() {
                               {zakatResult.nisab.toFixed(2)} ({zakatResult.basis})
                             </div>
                           </div>
-                          <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-slate-100 text-slate-700 border-slate-200">
-                            Not Due
-                          </span>
                         </div>
                       )}
                     </Card>
                   )}
+
+                  {/* ✅ Download PDF button restored */}
+                  <button
+                    onClick={downloadPdf}
+                    className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-4 font-medium soft-shadow"
+                  >
+                    Download PDF
+                  </button>
 
                   <button
                     onClick={resetZakat}
