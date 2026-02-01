@@ -71,8 +71,6 @@ export default function HomePage() {
 
   // Placeholder handler (we'll implement real PDF later)
   const downloadPdf = () => {
-    // For now, just download a simple text as a placeholder.
-    // Next step: generate an actual PDF offline.
     const lines: string[] = [];
     lines.push("Zakat Calculation Summary");
     lines.push("------------------------");
@@ -82,7 +80,9 @@ export default function HomePage() {
       lines.push(`Nisab: ₹ ${zakatResult.nisab.toFixed(2)}`);
       lines.push(`Zakat due: ₹ ${zakatResult.zakat.toFixed(2)}`);
     }
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([lines.join("\n")], {
+      type: "text/plain;charset=utf-8"
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -344,6 +344,11 @@ export default function HomePage() {
                               {zakatResult.nisab.toFixed(2)} ({zakatResult.basis})
                             </div>
                           </div>
+
+                          {/* ✅ Due badge restored */}
+                          <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-brand-100 text-brand-900 border-brand-200">
+                            Due
+                          </span>
                         </div>
                       ) : (
                         <div className="flex items-center justify-between gap-4">
@@ -357,12 +362,16 @@ export default function HomePage() {
                               {zakatResult.nisab.toFixed(2)} ({zakatResult.basis})
                             </div>
                           </div>
+
+                          {/* ✅ Not Due badge */}
+                          <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-slate-100 text-slate-700 border-slate-200">
+                            Not Due
+                          </span>
                         </div>
                       )}
                     </Card>
                   )}
 
-                  {/* ✅ Download PDF button restored */}
                   <button
                     onClick={downloadPdf}
                     className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-4 font-medium soft-shadow"
@@ -370,9 +379,10 @@ export default function HomePage() {
                     Download PDF
                   </button>
 
+                  {/* ✅ Reset button updated to look intentional (not greyed out) */}
                   <button
                     onClick={resetZakat}
-                    className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 text-sm font-medium"
+                    className="w-full rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 py-3 text-sm font-medium soft-shadow"
                   >
                     Reset
                   </button>
