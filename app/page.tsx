@@ -165,7 +165,7 @@ export default function HomePage() {
   // Helper: the “manual rate” field shown in the Nisab card should depend on basis
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? z.goldRate : z.silverRate;
-  const manualRateLabel = basis === "gold" ? "Gold rate per gram (manual)" : "Silver rate per gram (manual)";
+  const manualRateLabel = basis === "gold" ? "Gold rate per gram (enter-manually)" : "Silver rate per gram (enter-manually)";
 
   const estimatedNisab =
     zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
@@ -198,7 +198,7 @@ export default function HomePage() {
               {/* ✅ Nisab (Eligibility) — bring back API-related fields like your screenshot */}
               <Card title="NISAB (ELIGIBILITY)">
                 <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
+                  <div className="text-sm font-semibold text-slate-900">Choose your Nisab</div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
