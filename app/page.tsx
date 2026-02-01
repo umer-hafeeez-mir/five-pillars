@@ -56,11 +56,7 @@ function formatINR(n: number) {
 }
 
 export default function HomePage() {
-  const [active, setActive] = usePersistedState<PillarKey>(
-    "fp_active_tab_v1",
-    "zakat"
-  );
-
+  const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
   const [z, setZ] = usePersistedState<ZState>("fp_zakat_form_v3", ZAKAT_DEFAULTS);
 
   const pillar = PILLARS[active];
@@ -80,7 +76,9 @@ export default function HomePage() {
       `Status: ${zakatResult.eligible ? "Due" : "Not Due"}`,
       `Zakat: ₹ ${formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}`,
       `Net: ₹ ${formatINR(zakatResult.net)}`,
-      `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`
+      `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`,
+      "",
+      "Calculated offline"
     ].join("\n");
 
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
@@ -120,7 +118,7 @@ export default function HomePage() {
         return;
       }
     } catch {
-      return;
+      // ignore
     }
 
     try {
@@ -130,12 +128,13 @@ export default function HomePage() {
     }
   };
 
-  // Spacer should cover the full tray height so form never appears behind it
-  const TRAY_SPACER_HEIGHT = 430;
+  const safeAreaBottom =
+    typeof window !== "undefined"
+      ? "calc(env(safe-area-inset-bottom, 0px) + 16px)"
+      : "16px";
 
   return (
     <main className="min-h-screen">
-      {/* InstallBanner removed to avoid overlap and “Got it” */}
       <header className="container-page pt-10 pb-4 text-center">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
           Five Pillars of Islam
@@ -160,7 +159,6 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* FORM */}
             <div className="mt-6 space-y-4">
               <Card title="CASH & SAVINGS">
                 <div className="space-y-3">
@@ -229,7 +227,6 @@ export default function HomePage() {
                     value={z.goldGrams}
                     onChange={(v) => setZ((s) => ({ ...s, goldGrams: v }))}
                   />
-
                   <Field
                     label="Gold rate per gram"
                     prefix="₹"
@@ -244,7 +241,6 @@ export default function HomePage() {
                     value={z.silverGrams}
                     onChange={(v) => setZ((s) => ({ ...s, silverGrams: v }))}
                   />
-
                   <Field
                     label="Silver rate per gram"
                     prefix="₹"
@@ -295,8 +291,8 @@ export default function HomePage() {
                   <div>
                     <div className="font-semibold text-slate-900">1) Assets</div>
                     <p className="mt-1">
-                      Assets include cash, bank balance, gold value, silver value,
-                      investments/savings, business assets, and money lent out.
+                      Assets include cash, bank balance, gold value, silver value, investments/savings,
+                      business assets, and money lent out.
                     </p>
                   </div>
                   <div>
@@ -314,88 +310,81 @@ export default function HomePage() {
                 </div>
               </Accordion>
 
-              {/* Spacer to prevent “scroll behind tray” feeling */}
-              <div className={`h-[${TRAY_SPACER_HEIGHT}px]`} />
+              <div className="h-[320px]" />
             </div>
 
-            {/* FIXED BOTTOM TRAY (opaque + shadow so content never shows behind) */}
-            <div className="fixed left-0 right-0 bottom-0 z-50">
-              <div className="bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-t border-slate-200 shadow-[0_-10px_30px_rgba(2,6,23,0.10)]">
-                <div className="px-3 pt-3 pb-4">
-                  <div className="max-w-md mx-auto space-y-3">
-                    {/* RESULT */}
-                    {zakatResult && (
-                      <Card title="RESULT" variant="result">
-                        {zakatResult.breakdown?.nisabRateMissing ? (
-                          <div className="text-slate-800">
-                            <div className="text-sm font-semibold text-brand-900">
-                              Enter {z.nisabBasis === "silver" ? "silver rate" : "gold rate"} to calculate Nisab
+            <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+
+              <div className="px-3" style={{ paddingBottom: safeAreaBottom }}>
+                <div className="max-w-md mx-auto space-y-3 pointer-events-auto">
+                  {zakatResult && (
+                    <Card title="RESULT" variant="result">
+                      {zakatResult.breakdown?.nisabRateMissing ? (
+                        <div className="text-slate-800">
+                          <div className="text-sm font-semibold text-brand-900">
+                            Enter {z.nisabBasis === "silver" ? "silver rate" : "gold rate"} to calculate Nisab
+                          </div>
+                          <div className="mt-2 text-[11px] text-slate-600">
+                            You selected <b>{z.nisabBasis}</b> as your nisab basis. Add its rate per gram above to compute eligibility.
+                          </div>
+                        </div>
+                      ) : zakatResult.eligible ? (
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <div className="text-xs text-slate-700">Zakat to Pay</div>
+                            <div className="mt-1 text-2xl font-bold text-brand-900 tracking-tight">
+                              ₹ {formatINR(zakatResult.zakat)}
                             </div>
-                            <div className="mt-2 text-[11px] text-slate-600">
-                              You selected <b>{z.nisabBasis}</b> as your nisab basis.
-                              Add its rate per gram above to compute eligibility.
+                            <div className="mt-1 text-[11px] text-slate-600">
+                              Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} ({zakatResult.basis})
                             </div>
                           </div>
-                        ) : zakatResult.eligible ? (
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-slate-700">Zakat to Pay</div>
-                              <div className="mt-1 text-2xl font-bold text-brand-900 tracking-tight">
-                                ₹ {formatINR(zakatResult.zakat)}
-                              </div>
-                              <div className="mt-1 text-[11px] text-slate-600">
-                                Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} ({zakatResult.basis})
-                              </div>
+
+                          <span className="text-[11px] px-2 py-1 rounded-full font-semibold border bg-brand-100 text-brand-900 border-brand-200">
+                            Due
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <div className="text-xs text-slate-700">Below Nisab</div>
+                            <div className="mt-1 text-2xl font-bold text-slate-800 tracking-tight">₹ 0.00</div>
+                            <div className="mt-1 text-[11px] text-slate-600">
+                              Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} ({zakatResult.basis})
                             </div>
-
-                            <span className="text-[11px] px-2 py-1 rounded-full font-semibold border bg-brand-100 text-brand-900 border-brand-200">
-                              Due
-                            </span>
                           </div>
-                        ) : (
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <div className="text-xs text-slate-700">Below Nisab</div>
-                              <div className="mt-1 text-2xl font-bold text-slate-800 tracking-tight">
-                                ₹ 0.00
-                              </div>
-                              <div className="mt-1 text-[11px] text-slate-600">
-                                Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} ({zakatResult.basis})
-                              </div>
-                            </div>
 
-                            <span className="text-[11px] px-2 py-1 rounded-full font-semibold border bg-slate-100 text-slate-700 border-slate-200">
-                              Not Due
-                            </span>
-                          </div>
-                        )}
-                      </Card>
-                    )}
+                          <span className="text-[11px] px-2 py-1 rounded-full font-semibold border bg-slate-100 text-slate-700 border-slate-200">
+                            Not Due
+                          </span>
+                        </div>
+                      )}
+                    </Card>
+                  )}
 
-                    {/* ACTIONS (pop + consistent) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={downloadPdf}
-                        className="w-full rounded-xl bg-brand-800 text-white py-4 font-semibold soft-shadow transition hover:bg-brand-900 active:scale-[0.99]"
-                      >
-                        Download PDF
-                      </button>
-
-                      <button
-                        onClick={handleShare}
-                        className="w-full rounded-xl border-2 border-brand-300 bg-white text-brand-900 py-4 font-semibold transition hover:bg-brand-50 active:scale-[0.99]"
-                      >
-                        Share
-                      </button>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={downloadPdf}
+                      className="w-full rounded-xl bg-brand-800 text-white py-4 font-semibold soft-shadow transition hover:bg-brand-900 active:scale-[0.99]"
+                    >
+                      Download PDF
+                    </button>
 
                     <button
-                      onClick={resetZakat}
-                      className="w-full rounded-xl border border-slate-300 bg-white text-slate-800 py-3 text-sm font-semibold transition hover:bg-slate-50 active:scale-[0.99]"
+                      onClick={handleShare}
+                      className="w-full rounded-xl border-2 border-brand-300 bg-white text-brand-900 py-4 font-semibold transition hover:bg-brand-50 active:scale-[0.99]"
                     >
-                      Reset
+                      Share
                     </button>
                   </div>
+
+                  <button
+                    onClick={resetZakat}
+                    className="w-full rounded-xl border border-slate-300 bg-white text-slate-800 py-3 text-sm font-semibold transition hover:bg-slate-50 active:scale-[0.99]"
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
             </div>
