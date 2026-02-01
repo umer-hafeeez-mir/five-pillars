@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import InstallBanner from "@/components/InstallBanner";
 import PillarTabs from "@/components/PillarTabs";
 import PillarHeader from "@/components/PillarHeader";
@@ -52,6 +52,11 @@ const ZAKAT_DEFAULTS: ZState = {
   nisabBasis: "silver"
 };
 
+function formatINR(n: number) {
+  // Simple, offline formatting
+  return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+}
+
 export default function HomePage() {
   const [active, setActive] = usePersistedState<PillarKey>(
     "fp_active_tab_v1",
@@ -67,7 +72,14 @@ export default function HomePage() {
   const goldRateRef = useRef<HTMLInputElement | null>(null);
   const silverRateRef = useRef<HTMLInputElement | null>(null);
 
+  const [toast, setToast] = useState<string>("");
+
   const resetZakat = () => setZ(ZAKAT_DEFAULTS);
+
+  const dismissToastSoon = () => {
+    window.clearTimeout((dismissToastSoon as any)._t);
+    (dismissToastSoon as any)._t = window.setTimeout(() => setToast(""), 1800);
+  };
 
   // Placeholder handler (we'll implement real PDF later)
   const downloadPdf = () => {
@@ -76,9 +88,9 @@ export default function HomePage() {
     lines.push("------------------------");
     lines.push(`Nisab basis: ${z.nisabBasis}`);
     if (zakatResult) {
-      lines.push(`Net: ₹ ${zakatResult.net.toFixed(2)}`);
-      lines.push(`Nisab: ₹ ${zakatResult.nisab.toFixed(2)}`);
-      lines.push(`Zakat due: ₹ ${zakatResult.zakat.toFixed(2)}`);
+      lines.push(`Net: ₹ ${formatINR(zakatResult.net)}`);
+      lines.push(`Nisab: ₹ ${formatINR(zakatResult.nisab)}`);
+      lines.push(`Zakat due: ₹ ${formatINR(zakatResult.zakat)}`);
     }
     const blob = new Blob([lines.join("\n")], {
       type: "text/plain;charset=utf-8"
@@ -91,6 +103,55 @@ export default function HomePage() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  };
+
+  const buildShareText = () => {
+    if (!zakatResult) return "Zakat Calculator";
+
+    const dueText = zakatResult.eligible ? "Due" : "Not Due";
+    const zakatAmount = zakatResult.eligible ? zakatResult.zakat : 0;
+
+    const lines = [
+      "Zakat Calculation",
+      `Status: ${dueText}`,
+      `Zakat: ₹ ${formatINR(zakatAmount)}`,
+      `Net: ₹ ${formatINR(zakatResult.net)}`,
+      `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`,
+      "",
+      "Calculated offline (no account)."
+    ];
+
+    return lines.join("\n");
+  };
+
+  const handleShare = async () => {
+    const text = buildShareText();
+
+    // Prefer native share if available (best on mobile)
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Zakat Calculation",
+          text
+        });
+        setToast("Shared");
+        dismissToastSoon();
+        return;
+      }
+    } catch {
+      // user cancelled share — do nothing
+      return;
+    }
+
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast("Copied");
+      dismissToastSoon();
+    } catch {
+      // Final fallback: prompt
+      window.prompt("Copy this text:", text);
+    }
   };
 
   return (
@@ -146,7 +207,6 @@ export default function HomePage() {
 
               <Card title="PRECIOUS METALS">
                 <div className="space-y-3">
-                  {/* Nisab basis (top) */}
                   <div className="rounded-xl border border-slate-200 bg-white p-3">
                     <div className="text-sm font-medium text-slate-800">
                       Nisab basis
@@ -191,7 +251,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Gold */}
                   <Field
                     label="Gold (grams)"
                     suffix="g"
@@ -207,7 +266,6 @@ export default function HomePage() {
                     onChange={(v) => setZ((s) => ({ ...s, goldRate: v }))}
                   />
 
-                  {/* Silver */}
                   <Field
                     label="Silver (grams)"
                     suffix="g"
@@ -270,50 +328,35 @@ export default function HomePage() {
                       Assets include cash, bank balance, gold value, silver value,
                       investments/savings, business assets, and money lent out.
                     </p>
-                    <p className="mt-2 text-xs text-slate-600">
-                      Gold value = (Gold grams × Gold rate per gram) <br />
-                      Silver value = (Silver grams × Silver rate per gram)
-                    </p>
                   </div>
-
                   <div>
-                    <div className="font-semibold text-slate-900">
-                      2) Net zakatable wealth
-                    </div>
+                    <div className="font-semibold text-slate-900">2) Net</div>
                     <p className="mt-1">
-                      Net = Total assets − Debts & liabilities (never below 0).
+                      Net = Total assets − Debts & liabilities.
                     </p>
                   </div>
-
                   <div>
                     <div className="font-semibold text-slate-900">3) Nisab</div>
                     <p className="mt-1">
-                      You can choose whether nisab is based on silver or gold:
+                      Silver: 595g × silver rate, Gold: 85g × gold rate.
                     </p>
-                    <ul className="mt-2 list-disc pl-5 text-xs text-slate-600 space-y-1">
-                      <li>Silver nisab = 595g × Silver rate per gram</li>
-                      <li>Gold nisab = 85g × Gold rate per gram</li>
-                    </ul>
                   </div>
-
                   <div>
-                    <div className="font-semibold text-slate-900">
-                      4) Zakat due
-                    </div>
+                    <div className="font-semibold text-slate-900">4) Zakat</div>
                     <p className="mt-1">
-                      If Net ≥ Nisab, then Zakat = 2.5% of Net.
+                      If Net ≥ Nisab, Zakat = 2.5% of Net.
                     </p>
                   </div>
                 </div>
               </Accordion>
 
-              {/* Spacer for fixed tray */}
               <div className="h-[320px]" />
             </div>
 
             {/* Fixed Bottom Tray */}
             <div className="fixed left-0 right-0 bottom-0 z-50">
               <div className="h-10 bg-gradient-to-t from-white to-transparent" />
+
               <div className="px-3 pb-4">
                 <div className="max-w-md mx-auto space-y-3">
                   {zakatResult && (
@@ -337,15 +380,13 @@ export default function HomePage() {
                           <div>
                             <div className="text-xs text-slate-700">Zakat to Pay</div>
                             <div className="mt-1 text-2xl font-bold text-brand-900 tracking-tight">
-                              ₹ {zakatResult.zakat.toFixed(2)}
+                              ₹ {formatINR(zakatResult.zakat)}
                             </div>
                             <div className="mt-1 text-[11px] text-slate-600">
-                              Net: ₹ {zakatResult.net.toFixed(2)} · Nisab: ₹{" "}
-                              {zakatResult.nisab.toFixed(2)} ({zakatResult.basis})
+                              Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹{" "}
+                              {formatINR(zakatResult.nisab)} ({zakatResult.basis})
                             </div>
                           </div>
-
-                          {/* ✅ Due badge restored */}
                           <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-brand-100 text-brand-900 border-brand-200">
                             Due
                           </span>
@@ -358,12 +399,10 @@ export default function HomePage() {
                               ₹ 0.00
                             </div>
                             <div className="mt-1 text-[11px] text-slate-600">
-                              Net: ₹ {zakatResult.net.toFixed(2)} · Nisab: ₹{" "}
-                              {zakatResult.nisab.toFixed(2)} ({zakatResult.basis})
+                              Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹{" "}
+                              {formatINR(zakatResult.nisab)} ({zakatResult.basis})
                             </div>
                           </div>
-
-                          {/* ✅ Not Due badge */}
                           <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-slate-100 text-slate-700 border-slate-200">
                             Not Due
                           </span>
@@ -372,20 +411,36 @@ export default function HomePage() {
                     </Card>
                   )}
 
-                  <button
-                    onClick={downloadPdf}
-                    className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-4 font-medium soft-shadow"
-                  >
-                    Download PDF
-                  </button>
+                  {/* Actions row: Download + Share */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={downloadPdf}
+                      className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-4 font-medium soft-shadow"
+                    >
+                      Download PDF
+                    </button>
 
-                  {/* ✅ Reset button updated to look intentional (not greyed out) */}
+                    <button
+                      onClick={handleShare}
+                      className="w-full rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-900 py-4 font-medium"
+                    >
+                      Share
+                    </button>
+                  </div>
+
                   <button
                     onClick={resetZakat}
                     className="w-full rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 py-3 text-sm font-medium soft-shadow"
                   >
                     Reset
                   </button>
+
+                  {/* tiny toast */}
+                  {toast && (
+                    <div className="text-center text-xs text-slate-600">
+                      {toast}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
