@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 
 import PillarTabs from "@/components/PillarTabs";
@@ -19,10 +18,8 @@ function formatINR(n: number) {
 }
 
 export default function HomePage() {
-  // Persist active tab (anonymous)
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
-  // Persist zakat inputs (anonymous) — allow blank values
   const [z, setZ] = usePersistedState<ZakatForm>("fp_zakat_form_v1", {
     cash: "",
     bank: "",
@@ -43,10 +40,9 @@ export default function HomePage() {
   });
 
   const pillar = PILLARS[active];
-
   const zakatResult = active === "zakat" ? calculateZakat(z) : null;
 
-  // Spacer should cover the full tray height so form never appears behind it
+  // Tray spacer (must be >= tray height)
   const TRAY_HEIGHT_PX = 380;
 
   const resetForm = () => {
@@ -90,7 +86,6 @@ export default function HomePage() {
     const text = buildShareText();
     if (!text) return;
 
-    // Prefer native share
     // @ts-ignore
     if (navigator?.share) {
       try {
@@ -102,7 +97,6 @@ export default function HomePage() {
       }
     }
 
-    // Clipboard fallback
     try {
       await navigator.clipboard.writeText(text);
       alert("Copied summary to clipboard.");
@@ -112,14 +106,14 @@ export default function HomePage() {
   };
 
   const onDownloadPDF = () => {
-    // Placeholder for now (offline-friendly). Next step: implement jsPDF.
+    // Placeholder export (offline-safe). Later: jsPDF.
     const text = buildShareText();
     const blob = new Blob([text || "No result to export"], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "zakat-summary.txt"; // later change to .pdf after jsPDF implementation
+    a.download = "zakat-summary.txt";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -127,7 +121,7 @@ export default function HomePage() {
     URL.revokeObjectURL(url);
   };
 
-  // Helpful computed values for the Nisab card (display only)
+  // Nisab display helper
   const basis: NisabBasis = z.nisabBasis ?? "silver";
   const basisRate =
     basis === "silver"
@@ -150,7 +144,6 @@ export default function HomePage() {
       <section className="container-page pb-16">
         <PillarHeader title={pillar.title} subtitle={pillar.subtitle} icon={pillar.icon} />
 
-        {/* Non-zakat pages */}
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
             {pillar.blocks.map((b, idx) => (
@@ -162,7 +155,7 @@ export default function HomePage() {
         ) : (
           <>
             <div className="mt-6 space-y-4">
-              {/* Nisab (Eligibility) */}
+              {/* Nisab */}
               <Card title="NISAB (ELIGIBILITY)">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
@@ -199,25 +192,23 @@ export default function HomePage() {
                     Nisab determines whether Zakat is due based on your <b>total net assets</b> (not just metals).
                   </p>
 
-                  {basis === "gold" ? (
-                    <div className="mt-4">
+                  <div className="mt-4">
+                    {basis === "gold" ? (
                       <Field
                         label="Gold rate per gram (manual)"
                         prefix="₹"
                         value={z.goldRate}
                         onChange={(v) => setZ((s: any) => ({ ...s, goldRate: v }))}
                       />
-                    </div>
-                  ) : (
-                    <div className="mt-4">
+                    ) : (
                       <Field
                         label="Silver rate per gram (manual)"
                         prefix="₹"
                         value={z.silverRate}
                         onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
                       />
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm text-slate-700">
                     Estimated Nisab threshold:{" "}
@@ -226,22 +217,9 @@ export default function HomePage() {
                       (based on {basisNisabGrams}g {basis} × your rate)
                     </span>
                   </div>
-
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="text-xs text-slate-500">Last fetched: —</div>
-                    <button
-                      type="button"
-                      disabled
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed"
-                      title="Optional online fetch can be added later"
-                    >
-                      Fetch online (optional)
-                    </button>
-                  </div>
                 </div>
               </Card>
 
-              {/* CASH & SAVINGS */}
               <Card title="CASH & SAVINGS">
                 <div className="space-y-3">
                   <Field
@@ -260,7 +238,6 @@ export default function HomePage() {
                 </div>
               </Card>
 
-              {/* PRECIOUS METALS */}
               <Card title="PRECIOUS METALS">
                 <div className="space-y-3">
                   <Field
@@ -293,7 +270,6 @@ export default function HomePage() {
                 </div>
               </Card>
 
-              {/* OTHER ASSETS */}
               <Card title="OTHER ASSETS">
                 <div className="space-y-3">
                   <Field
@@ -317,7 +293,6 @@ export default function HomePage() {
                 </div>
               </Card>
 
-              {/* DEDUCTIONS */}
               <Card title="DEDUCTIONS">
                 <div className="space-y-3">
                   <Field
@@ -333,106 +308,111 @@ export default function HomePage() {
               <Accordion title="How Zakat is calculated">
                 <div className="text-sm text-slate-600 leading-relaxed space-y-2">
                   <p>
-                    This calculator estimates Zakat at <b>2.5%</b> of your <b>net zakatable wealth</b>.
+                    Zakat is <b>2.5%</b> of your <b>net zakatable wealth</b>.
                   </p>
                   <p>
-                    <b>Assets</b> include: cash, bank, gold value, silver value, investments, business assets, and money lent.
+                    <b>Assets</b>: cash, bank, gold value, silver value, investments, business assets, money lent.
                   </p>
                   <p>
                     <b>Net</b> = Assets − Debts (minimum 0). If Net ≥ Nisab, then Zakat = Net × 2.5%.
                   </p>
-                  <p className="text-xs text-slate-500">
-                    Nisab uses 595g silver or 85g gold × your entered rate (manual by default). Optional online fetch can be added later.
-                  </p>
                 </div>
               </Accordion>
 
-              {/* Spacer so content doesn't hide behind the fixed tray */}
+              {/* Spacer */}
               <div style={{ height: TRAY_HEIGHT_PX }} />
             </div>
 
-            {/* Fixed bottom tray (NO full-width banner) */}
+            {/* FIXED TRAY + OPAQUE SCRIM */}
             {zakatResult && (
-              <div
-                className="fixed inset-x-0 bottom-0 z-50 pointer-events-none"
-                style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
-              >
-                <div className="container-page py-3">
-                  <div className="max-w-md mx-auto space-y-3 pointer-events-auto">
-                    {/* Result */}
-                    <div className="rounded-2xl border border-emerald-300 bg-emerald-50/60 p-5 soft-shadow">
-                      <div className="text-[11px] tracking-widest text-emerald-900/70 font-semibold">
-                        RESULT
+              <>
+                {/* scrim prevents background “showing through” tray */}
+                <div className="fixed inset-x-0 bottom-0 z-40 h-[520px] pointer-events-none">
+                  <div className="absolute inset-0 bg-white/95 backdrop-blur-sm" />
+                  <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/95 to-transparent" />
+                </div>
+
+                <div
+                  className="fixed inset-x-0 bottom-0 z-50 pointer-events-none"
+                  style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+                >
+                  <div className="container-page py-3">
+                    <div className="max-w-md mx-auto space-y-3 pointer-events-auto">
+                      {/* Result card (solid, not washed out) */}
+                      <div className="rounded-2xl border border-emerald-300 bg-white p-5 soft-shadow">
+                        <div className="text-[11px] tracking-widest text-emerald-900/70 font-semibold">
+                          RESULT
+                        </div>
+
+                        {zakatResult.breakdown.nisabRateMissing ? (
+                          <div className="mt-4">
+                            <div className="text-base font-semibold text-slate-900">
+                              Enter {zakatResult.basis} rate to calculate Nisab
+                            </div>
+                            <p className="mt-2 text-sm text-slate-600">
+                              You selected <b>{zakatResult.basis}</b> as your nisab basis. Add its rate per gram above
+                              to compute eligibility.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="mt-4 flex items-center justify-between gap-3">
+                            <div>
+                              <div className="text-sm text-slate-700">
+                                {zakatResult.eligible ? "Zakat to Pay" : "Below Nisab"}
+                              </div>
+                              <div className="mt-1 text-3xl font-semibold text-emerald-900">
+                                ₹ {formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}
+                              </div>
+
+                              <div className="mt-2 text-xs text-slate-600">
+                                Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} (
+                                {zakatResult.basis})
+                              </div>
+                            </div>
+
+                            <div
+                              className={[
+                                "shrink-0 rounded-full px-3 py-1 text-xs font-semibold border",
+                                zakatResult.eligible
+                                  ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                                  : "bg-slate-50 text-slate-700 border-slate-200"
+                              ].join(" ")}
+                            >
+                              {zakatResult.eligible ? "Due" : "Not Due"}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {zakatResult.breakdown.nisabRateMissing ? (
-                        <div className="mt-4">
-                          <div className="text-base font-semibold text-emerald-900">
-                            Enter {zakatResult.basis} rate to calculate Nisab
-                          </div>
-                          <p className="mt-2 text-sm text-slate-600">
-                            You selected <b>{zakatResult.basis}</b> as your nisab basis. Add its rate per gram above to
-                            compute eligibility.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-sm text-slate-700">
-                              {zakatResult.eligible ? "Zakat to Pay" : "Below Nisab"}
-                            </div>
-                            <div className="mt-1 text-3xl font-semibold text-emerald-900">
-                              ₹ {formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}
-                            </div>
-
-                            <div className="mt-2 text-xs text-slate-600">
-                              Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} (
-                              {zakatResult.basis})
-                            </div>
-                          </div>
-
-                          <div
-                            className={[
-                              "shrink-0 rounded-full px-3 py-1 text-xs font-semibold border",
-                              zakatResult.eligible
-                                ? "bg-emerald-100 text-emerald-900 border-emerald-200"
-                                : "bg-slate-100 text-slate-700 border-slate-200"
-                            ].join(" ")}
+                      {/* Actions (consistent theme) */}
+                      <div className="rounded-2xl bg-white p-3 border border-slate-200 soft-shadow">
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={onDownloadPDF}
+                            className="w-full rounded-xl bg-emerald-900 hover:bg-emerald-950 text-white py-4 font-semibold transition"
                           >
-                            {zakatResult.eligible ? "Due" : "Not Due"}
-                          </div>
+                            Download PDF
+                          </button>
+
+                          <button
+                            onClick={onShare}
+                            className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-4 font-semibold transition"
+                          >
+                            Share
+                          </button>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="rounded-2xl bg-white p-3 border border-slate-200 soft-shadow">
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={onDownloadPDF}
-                          className="w-full rounded-xl bg-emerald-900 hover:bg-emerald-950 text-white py-4 font-semibold transition"
-                        >
-                          Download PDF
-                        </button>
 
                         <button
-                          onClick={onShare}
-                          className="w-full rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-900 py-4 font-semibold transition"
+                          onClick={resetForm}
+                          className="mt-2 w-full rounded-xl bg-slate-900 hover:bg-slate-950 text-white py-3 text-sm font-semibold transition"
                         >
-                          Share
+                          Reset
                         </button>
                       </div>
-
-                      <button
-                        onClick={resetForm}
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 py-3 text-sm font-semibold transition"
-                      >
-                        Reset
-                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </>
         )}
