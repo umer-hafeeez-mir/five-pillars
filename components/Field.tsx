@@ -8,7 +8,8 @@ export default function Field({
   prefix,
   suffix,
   value,
-  onChange
+  onChange,
+  inputRef
 }: {
   label: string;
   hint?: string;
@@ -16,6 +17,7 @@ export default function Field({
   suffix?: string;
   value: number | "";
   onChange: (v: number | "") => void;
+  inputRef?: React.Ref<HTMLInputElement>;
 }) {
   return (
     <div>
@@ -29,6 +31,7 @@ export default function Field({
         )}
 
         <input
+          ref={inputRef}
           inputMode="decimal"
           className={[
             "w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-slate-900 outline-none",
@@ -37,7 +40,6 @@ export default function Field({
             suffix ? "pr-10" : ""
           ].join(" ")}
           value={value === "" ? "" : String(value)}
-          placeholder=""
           onChange={(e) => {
             const raw = e.target.value;
 
