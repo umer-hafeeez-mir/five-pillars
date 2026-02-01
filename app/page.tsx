@@ -225,6 +225,7 @@ export default function HomePage() {
                     value={z.goldGrams}
                     onChange={(v) => setZ((s) => ({ ...s, goldGrams: v }))}
                   />
+
                   <Field
                     label="Gold rate per gram"
                     prefix="₹"
@@ -239,6 +240,7 @@ export default function HomePage() {
                     value={z.silverGrams}
                     onChange={(v) => setZ((s) => ({ ...s, silverGrams: v }))}
                   />
+
                   <Field
                     label="Silver rate per gram"
                     prefix="₹"
@@ -356,7 +358,23 @@ export default function HomePage() {
                             <div className="mt-1 text-[11px] text-slate-600">
                               Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} ({zakatResult.basis})
                             </div>
+
+                            <span className="text-[11px] px-2 py-1 rounded-full font-semibold border bg-slate-100 text-slate-700 border-slate-200">
+                              Not Due
+                            </span>
                           </div>
+                        )}
+                      </Card>
+                    )}
+
+                    {/* ACTIONS (pop + consistent) */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={downloadPdf}
+                        className="w-full rounded-xl bg-brand-800 text-white py-4 font-semibold soft-shadow transition hover:bg-brand-900 active:scale-[0.99]"
+                      >
+                        Download PDF
+                      </button>
 
                           <span className="text-[11px] px-2 py-1 rounded-full font-semibold border bg-slate-100 text-slate-700 border-slate-200">
                             Not Due
