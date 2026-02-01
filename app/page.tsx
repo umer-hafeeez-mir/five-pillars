@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import InstallBanner from "@/components/InstallBanner";
 import PillarTabs from "@/components/PillarTabs";
 import PillarHeader from "@/components/PillarHeader";
@@ -16,33 +17,31 @@ export default function HomePage() {
     "zakat"
   );
 
-  /**
-   * Bump storage key because we added:
-   * - goldRate, silverRate
-   * - nisabBasis
-   * and we now allow "" instead of 0.
-   */
   const [z, setZ] = usePersistedState("fp_zakat_form_v3", {
-    cash: "" as number | "",
-    bank: "" as number | "",
+    cash: "",
+    bank: "",
 
-    goldGrams: "" as number | "",
-    goldRate: "" as number | "",
+    goldGrams: "",
+    goldRate: "",
 
-    silverGrams: "" as number | "",
-    silverRate: "" as number | "",
+    silverGrams: "",
+    silverRate: "",
 
-    investments: "" as number | "",
-    businessAssets: "" as number | "",
-    moneyLent: "" as number | "",
+    investments: "",
+    businessAssets: "",
+    moneyLent: "",
 
-    debts: "" as number | "",
+    debts: "",
 
     nisabBasis: "silver" as "silver" | "gold"
   });
 
   const pillar = PILLARS[active];
   const zakatResult = active === "zakat" ? calculateZakat(z as any) : null;
+
+  // 🔑 refs for autofocus
+  const goldRateRef = useRef<HTMLInputElement | null>(null);
+  const silverRateRef = useRef<HTMLInputElement | null>(null);
 
   const resetZakat = () =>
     setZ({
@@ -96,13 +95,11 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* Zakat calculator form */}
             <div className="mt-6 space-y-4">
               <Card title="CASH & SAVINGS">
                 <div className="space-y-3">
                   <Field
                     label="Cash in hand"
-                    hint="Money you currently have"
                     prefix="₹"
                     value={z.cash}
                     onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
@@ -118,17 +115,58 @@ export default function HomePage() {
 
               <Card title="PRECIOUS METALS">
                 <div className="space-y-3">
+                  {/* Nisab basis */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-sm font-medium text-slate-800">
+                      Nisab basis
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setZ((s: any) => ({ ...s, nisabBasis: "silver" }));
+                          setTimeout(() => silverRateRef.current?.focus(), 50);
+                        }}
+                        className={[
+                          "flex-1 rounded-xl border px-3 py-2 text-sm font-medium",
+                          z.nisabBasis === "silver"
+                            ? "border-brand-300 bg-brand-50 text-brand-900"
+                            : "border-slate-200 bg-white text-slate-700"
+                        ].join(" ")}
+                      >
+                        Silver (595g)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setZ((s: any) => ({ ...s, nisabBasis: "gold" }));
+                          setTimeout(() => goldRateRef.current?.focus(), 50);
+                        }}
+                        className={[
+                          "flex-1 rounded-xl border px-3 py-2 text-sm font-medium",
+                          z.nisabBasis === "gold"
+                            ? "border-brand-300 bg-brand-50 text-brand-900"
+                            : "border-slate-200 bg-white text-slate-700"
+                        ].join(" ")}
+                      >
+                        Gold (85g)
+                      </button>
+                    </div>
+                  </div>
+
                   <Field
                     label="Gold (grams)"
                     suffix="g"
                     value={z.goldGrams}
                     onChange={(v) => setZ((s: any) => ({ ...s, goldGrams: v }))}
                   />
+
                   <Field
                     label="Gold rate per gram"
-                    hint="Enter current market rate"
                     prefix="₹"
                     value={z.goldRate}
+                    inputRef={goldRateRef}
                     onChange={(v) => setZ((s: any) => ({ ...s, goldRate: v }))}
                   />
 
@@ -140,155 +178,18 @@ export default function HomePage() {
                       setZ((s: any) => ({ ...s, silverGrams: v }))
                     }
                   />
+
                   <Field
                     label="Silver rate per gram"
-                    hint="Enter current market rate"
                     prefix="₹"
                     value={z.silverRate}
+                    inputRef={silverRateRef}
                     onChange={(v) =>
                       setZ((s: any) => ({ ...s, silverRate: v }))
                     }
                   />
-
-                  {/* ✅ Nisab toggle */}
-                  <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
-                    <div className="text-sm font-medium text-slate-800">
-                      Nisab basis
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setZ((s: any) => ({ ...s, nisabBasis: "silver" }))
-                        }
-                        className={[
-                          "flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition",
-                          z.nisabBasis === "silver"
-                            ? "border-brand-300 bg-brand-50 text-brand-900"
-                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                        ].join(" ")}
-                      >
-                        Silver (595g)
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setZ((s: any) => ({ ...s, nisabBasis: "gold" }))
-                        }
-                        className={[
-                          "flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition",
-                          z.nisabBasis === "gold"
-                            ? "border-brand-300 bg-brand-50 text-brand-900"
-                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                        ].join(" ")}
-                      >
-                        Gold (85g)
-                      </button>
-                    </div>
-
-                    <div className="mt-2 text-xs text-slate-500">
-                      This app uses your selected basis to compute the nisab
-                      threshold.
-                    </div>
-                  </div>
                 </div>
               </Card>
-
-              <Card title="OTHER ASSETS">
-                <div className="space-y-3">
-                  <Field
-                    label="Investments / Savings"
-                    prefix="₹"
-                    value={z.investments}
-                    onChange={(v) =>
-                      setZ((s: any) => ({ ...s, investments: v }))
-                    }
-                  />
-                  <Field
-                    label="Business assets"
-                    prefix="₹"
-                    value={z.businessAssets}
-                    onChange={(v) =>
-                      setZ((s: any) => ({ ...s, businessAssets: v }))
-                    }
-                  />
-                  <Field
-                    label="Money lent to others"
-                    prefix="₹"
-                    value={z.moneyLent}
-                    onChange={(v) =>
-                      setZ((s: any) => ({ ...s, moneyLent: v }))
-                    }
-                  />
-                </div>
-              </Card>
-
-              <Card title="DEDUCTIONS">
-                <div className="space-y-3">
-                  <Field
-                    label="Debts & liabilities"
-                    hint="Money you owe and must repay"
-                    prefix="₹"
-                    value={z.debts}
-                    onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
-                  />
-                </div>
-              </Card>
-
-              {/* ✅ In-app documentation */}
-              <Accordion title="How Zakat is calculated">
-                <div className="text-sm text-slate-700 leading-relaxed space-y-3">
-                  <div>
-                    <div className="font-semibold text-slate-900">1) Assets</div>
-                    <p className="mt-1">
-                      Assets include cash, bank balance, gold value, silver value,
-                      investments/savings, business assets, and money lent out.
-                    </p>
-                    <p className="mt-2 text-xs text-slate-600">
-                      Gold value = (Gold grams × Gold rate per gram) <br />
-                      Silver value = (Silver grams × Silver rate per gram)
-                    </p>
-                  </div>
-
-                  <div>
-                    <div className="font-semibold text-slate-900">
-                      2) Net zakatable wealth
-                    </div>
-                    <p className="mt-1">
-                      Net = Total assets − Debts & liabilities (never below 0).
-                    </p>
-                  </div>
-
-                  <div>
-                    <div className="font-semibold text-slate-900">3) Nisab</div>
-                    <p className="mt-1">
-                      You can choose whether nisab is based on silver or gold:
-                    </p>
-                    <ul className="mt-2 list-disc pl-5 text-xs text-slate-600 space-y-1">
-                      <li>Silver nisab = 595g × Silver rate per gram</li>
-                      <li>Gold nisab = 85g × Gold rate per gram</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <div className="font-semibold text-slate-900">
-                      4) Zakat due
-                    </div>
-                    <p className="mt-1">
-                      If Net ≥ Nisab, then Zakat = 2.5% of Net.
-                    </p>
-                    <p className="mt-2 text-xs text-slate-600">
-                      Zakat rate used: 2.5% (0.025)
-                    </p>
-                  </div>
-
-                  <p className="text-xs text-slate-500">
-                    Note: This is an estimate for general use. Local scholarly
-                    guidance may differ for specific cases.
-                  </p>
-                </div>
-              </Accordion>
 
               {/* Spacer for fixed tray */}
               <div className="h-[320px]" />
@@ -297,71 +198,23 @@ export default function HomePage() {
             {/* Fixed Bottom Tray */}
             <div className="fixed left-0 right-0 bottom-0 z-50">
               <div className="h-10 bg-gradient-to-t from-white to-transparent" />
-
               <div className="px-3 pb-4">
                 <div className="max-w-md mx-auto space-y-3">
                   {zakatResult && (
                     <Card title="RESULT" variant="result">
-                      {zakatResult.breakdown.nisabRateMissing ? (
-                        <div className="text-slate-800">
-                          <div className="text-sm font-medium text-brand-900">
-                            Enter{" "}
-                            {z.nisabBasis === "silver"
-                              ? "silver rate"
-                              : "gold rate"}{" "}
-                            to calculate Nisab
-                          </div>
-                          <div className="mt-2 text-[11px] text-slate-600">
-                            You selected <b>{z.nisabBasis}</b> as your nisab basis.
-                            Add its rate per gram above to compute eligibility.
-                          </div>
-                        </div>
-                      ) : zakatResult.eligible ? (
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <div className="text-xs text-slate-700">
-                              Zakat to Pay
-                            </div>
-                            <div className="mt-1 text-2xl font-bold text-brand-900 tracking-tight">
-                              ₹ {zakatResult.zakat.toFixed(2)}
-                            </div>
-                            <div className="mt-1 text-[11px] text-slate-600">
-                              Net: ₹ {zakatResult.net.toFixed(2)} · Nisab: ₹{" "}
-                              {zakatResult.nisab.toFixed(2)} (
-                              {zakatResult.basis})
-                            </div>
-                          </div>
-
-                          <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-brand-100 text-brand-900 border-brand-200">
-                            Due
-                          </span>
+                      {zakatResult.eligible ? (
+                        <div className="text-2xl font-bold text-brand-900">
+                          ₹ {zakatResult.zakat.toFixed(2)}
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <div className="text-xs text-slate-700">
-                              Below Nisab
-                            </div>
-                            <div className="mt-1 text-2xl font-bold text-slate-800 tracking-tight">
-                              ₹ 0.00
-                            </div>
-                            <div className="mt-1 text-[11px] text-slate-600">
-                              Net: ₹ {zakatResult.net.toFixed(2)} · Nisab: ₹{" "}
-                              {zakatResult.nisab.toFixed(2)} ({zakatResult.basis})
-                            </div>
-                          </div>
-
-                          <span className="text-[11px] px-2 py-1 rounded-full font-medium border bg-slate-100 text-slate-700 border-slate-200">
-                            Not Due
-                          </span>
-                        </div>
+                        <div className="text-slate-700">Below Nisab</div>
                       )}
                     </Card>
                   )}
 
                   <button
                     onClick={resetZakat}
-                    className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 text-sm font-medium"
+                    className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 py-3 text-sm font-medium"
                   >
                     Reset
                   </button>
