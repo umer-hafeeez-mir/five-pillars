@@ -40,7 +40,7 @@ function n(v: any) {
   return Number.isFinite(num) ? num : 0;
 }
 
-type ZakatSection = "cash" | "metals" | "other" | "deductions" | null;
+type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
 
 function CollapsibleCard({
   title,
@@ -57,12 +57,7 @@ function CollapsibleCard({
 }) {
   return (
     <Card title="">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full text-left"
-        aria-expanded={open}
-      >
+      <button type="button" onClick={onToggle} className="w-full text-left" aria-expanded={open}>
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-lg font-semibold text-slate-900">{title}</div>
@@ -116,9 +111,10 @@ export default function HomePage() {
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
 
   // ✅ Only one section open at a time (persisted)
+  // Default: Nisab is open on first load
   const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
-    "fp_zakat_open_section_v1",
-    "cash"
+    "fp_zakat_open_section_v2",
+    "nisab"
   );
 
   const prevEligibleRef = useRef<boolean>(false);
@@ -174,7 +170,7 @@ export default function HomePage() {
     });
     setLastFetchedAt(null);
     setResultOpen(false);
-    setOpenSection("cash");
+    setOpenSection("nisab");
   };
 
   const handleDownloadPDF = () => {
@@ -278,6 +274,13 @@ export default function HomePage() {
   const otherTotal = n(z.investments) + n(z.businessAssets) + n(z.moneyLent);
   const debtsTotal = n(z.debts);
 
+  const nisabSubtitle =
+    zakatResult?.breakdown?.nisabRateMissing
+      ? `Add ${basis} rate`
+      : estimatedNisab !== "₹ —"
+      ? `Threshold: ${estimatedNisab}`
+      : "Not entered";
+
   const cashSubtitle = cashTotal > 0 ? `₹ ${formatINR(cashTotal)}` : "Not entered";
   const metalsSubtitle =
     metalsTotal > 0
@@ -325,8 +328,13 @@ export default function HomePage() {
         ) : (
           <>
             <div className="mt-6 space-y-4">
-              {/* Nisab (Eligibility) */}
-              <Card title="NISAB (ELIGIBILITY)">
+              {/* ✅ Nisab is now a collapsible card too (so opening any other closes it) */}
+              <CollapsibleCard
+                title="Nisab Eligibility"
+                subtitle={nisabSubtitle}
+                open={openSection === "nisab"}
+                onToggle={() => toggleSection("nisab")}
+              >
                 <div className="rounded-xl border border-slate-200 p-4">
                   <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
 
@@ -403,9 +411,8 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-              </Card>
+              </CollapsibleCard>
 
-              {/* ✅ Collapsible sections (only one open at a time) */}
               <CollapsibleCard
                 title="Cash & Savings"
                 subtitle={cashSubtitle}
@@ -583,7 +590,6 @@ export default function HomePage() {
               >
                 <div className="max-w-md mx-auto pointer-events-auto">
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
-                    {/* Result (collapsible header always visible) */}
                     {zakatResult && (
                       <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
                         <button
@@ -593,12 +599,8 @@ export default function HomePage() {
                               const next = !v;
 
                               // ✅ Auto-open Precious Metals if nisab basis rate is missing AND user expands Result
-                              if (
-                                next &&
-                                zakatResult?.breakdown?.nisabRateMissing &&
-                                openSection !== "metals"
-                              ) {
-                                setOpenSection("metals");
+                              if (next && zakatResult?.breakdown?.nisabRateMissing) {
+                                setOpenSection("metals"); // closes all others including Nisab
                               }
 
                               return next;
@@ -627,7 +629,6 @@ export default function HomePage() {
                           </div>
                         </button>
 
-                        {/* Expanded details */}
                         {resultOpen && (
                           <div className="mt-4">
                             {zakatResult.breakdown.nisabRateMissing ? (
@@ -667,7 +668,6 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {/* Actions */}
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <button
                         type="button"
