@@ -37,13 +37,13 @@ function formatDateTime(ts?: number | null) {
 export default function HomePage() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
-  // Form state (what user is currently editing)
   const [z, setZ] = usePersistedState<ZakatForm>("fp_zakat_form_v3", {
     cash: "",
     bank: "",
 
     goldGrams: "",
     goldRate: "",
+    // ✅ purity fields (lib already updated)
     goldKarat: "24k",
     goldCustomPurity: "",
 
@@ -64,22 +64,41 @@ export default function HomePage() {
     null
   );
 
-  // Result UI state
+  // ✅ Result card collapsed by default (persisted)
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
 
-  // ✅ NEW: Result tray hidden until user clicks Calculate
-  const [showResultTray, setShowResultTray] = usePersistedState<boolean>("fp_show_result_tray_v1", false);
+  // ✅ NEW: Result card hidden until user clicks Calculate
+  const [resultVisible, setResultVisible] = usePersistedState<boolean>("fp_result_visible_v1", false);
 
-  // ✅ NEW: Snapshot used for calculation (only updates on Calculate)
-  const [calcZ, setCalcZ] = usePersistedState<ZakatForm | null>("fp_zakat_calc_snapshot_v1", null);
+  const prevEligibleRef = useRef<boolean>(false);
+  const prevActiveRef = useRef<PillarKey>(active);
 
   const pillar = PILLARS[active];
+  const zakatResult = active === "zakat" ? calculateZakat(z) : null;
 
-  // ✅ Result is computed only from snapshot (so it doesn't change until Calculate)
-  const zakatResult = active === "zakat" && calcZ ? calculateZakat(calcZ) : null;
+  // ✅ Keep existing auto-expand when zakat becomes due (false -> true)
+  useEffect(() => {
+    if (active !== "zakat") {
+      prevActiveRef.current = active;
+      return;
+    }
+
+    const switchedToZakat = prevActiveRef.current !== "zakat" && active === "zakat";
+    prevActiveRef.current = active;
+
+    const eligibleNow = Boolean(zakatResult?.eligible);
+    const eligibleBefore = prevEligibleRef.current;
+
+    // only auto-expand on transition, not when arriving on zakat tab
+    if (!switchedToZakat && !eligibleBefore && eligibleNow) {
+      setResultOpen(true);
+    }
+
+    prevEligibleRef.current = eligibleNow;
+  }, [active, zakatResult?.eligible, setResultOpen]);
 
   // Spacer must roughly match tray height so form never hides under tray
-  const TRAY_SPACER_HEIGHT = 300;
+  const TRAY_SPACER_HEIGHT = 360;
 
   const resetForm = () => {
     setZ({
@@ -103,21 +122,10 @@ export default function HomePage() {
       nisabBasis: "silver"
     });
     setLastFetchedAt(null);
-
-    // ✅ reset result state too
-    setCalcZ(null);
-    setShowResultTray(false);
     setResultOpen(false);
-  };
 
-  const handleCalculate = () => {
-    // Snapshot current form and show tray
-    setCalcZ(z);
-    setShowResultTray(true);
-
-    // Expand if due, else keep collapsed
-    const r = calculateZakat(z);
-    setResultOpen(Boolean(r?.eligible));
+    // ✅ hide result again
+    setResultVisible(false);
   };
 
   const handleShare = async () => {
@@ -149,6 +157,14 @@ export default function HomePage() {
     }
   };
 
+  // ✅ NEW: Calculate button shows result
+  const handleCalculate = () => {
+    setResultVisible(true);
+
+    // If eligible, expand automatically for visibility; otherwise keep user's state
+    if (zakatResult?.eligible) setResultOpen(true);
+  };
+
   // Optional fetch (hook to a real API later). For now, it just demonstrates the flow.
   const handleFetchOnline = async () => {
     try {
@@ -166,15 +182,15 @@ export default function HomePage() {
     }
   };
 
-  // Manual rate field depends on selected basis (edit state)
+  // Manual rate field depends on selected basis
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? z.goldRate : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
 
-  // Estimated nisab should reflect snapshot if present (so UI matches result)
   const estimatedNisab =
     zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
 
+  // Tray: short heading (always shown)
   const trayHeading = zakatResult?.breakdown?.nisabRateMissing
     ? `Add a ${zakatResult?.basis ?? basis} rate to check Nisab`
     : zakatResult?.eligible
@@ -441,7 +457,7 @@ export default function HomePage() {
               <div style={{ height: TRAY_SPACER_HEIGHT }} />
             </div>
 
-            {/* Bottom tray */}
+            {/* Fixed bottom tray (result collapsible) */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
@@ -449,8 +465,8 @@ export default function HomePage() {
               >
                 <div className="max-w-md mx-auto pointer-events-auto">
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
-                    {/* ✅ Result tray hidden until Calculate */}
-                    {showResultTray && zakatResult && (
+                    {/* ✅ Result (collapsible header always visible) — now hidden until Calculate */}
+                    {resultVisible && zakatResult && (
                       <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
                         <button
                           type="button"
@@ -460,7 +476,9 @@ export default function HomePage() {
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">RESULT</div>
+                              <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">
+                                RESULT
+                              </div>
                               <div className="mt-2 text-base font-semibold text-slate-900">{trayHeading}</div>
                               <div className="mt-1 text-xs text-slate-500">
                                 {resultOpen ? "Tap to collapse" : "Tap to expand"}
@@ -476,11 +494,12 @@ export default function HomePage() {
                           </div>
                         </button>
 
+                        {/* Expanded details */}
                         {resultOpen && (
                           <div className="mt-4">
                             {zakatResult.breakdown.nisabRateMissing ? (
                               <div className="text-sm text-slate-600">
-                                We compare your <b>total net assets</b> to Nisab. Add the selected{" "}
+                                You can enter your assets without metal rates, but we need the selected{" "}
                                 <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
                               </div>
                             ) : (
@@ -515,12 +534,12 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {/* ✅ NEW: Three buttons — Calculate / Share / Reset */}
+                    {/* ✅ Actions: Calculate / Share / Reset (removed Download PDF) */}
                     <div className="mt-3 grid grid-cols-3 gap-3">
                       <button
                         type="button"
                         onClick={handleCalculate}
-                        className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-3 text-sm font-semibold soft-shadow transition"
+                        className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-3 font-semibold soft-shadow transition"
                       >
                         Calculate
                       </button>
@@ -528,10 +547,10 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={handleShare}
-                        disabled={!showResultTray || !zakatResult}
+                        disabled={!resultVisible || !zakatResult}
                         className={[
-                          "w-full rounded-xl py-3 text-sm font-semibold transition",
-                          !showResultTray || !zakatResult
+                          "w-full rounded-xl py-3 font-semibold transition",
+                          !resultVisible || !zakatResult
                             ? "border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
                             : "border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900"
                         ].join(" ")}
@@ -547,13 +566,6 @@ export default function HomePage() {
                         Reset
                       </button>
                     </div>
-
-                    {/* Small helper text when result is hidden */}
-                    {!showResultTray && (
-                      <div className="mt-3 text-xs text-slate-500 text-center">
-                        Enter values, then tap <b>Calculate</b> to see your result.
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
