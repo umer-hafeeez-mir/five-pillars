@@ -34,6 +34,65 @@ function formatDateTime(ts?: number | null) {
   }
 }
 
+function n(v: any) {
+  if (v === "" || v === null || v === undefined) return 0;
+  const num = Number(v);
+  return Number.isFinite(num) ? num : 0;
+}
+
+type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
+
+function CollapsibleCard({
+  title,
+  subtitle,
+  open,
+  onToggle,
+  children
+}: {
+  title: string;
+  subtitle: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card title="">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={[
+          "group w-full text-left rounded-2xl transition",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        ].join(" ")}
+        aria-expanded={open}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-lg font-semibold text-slate-900">{title}</div>
+            <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
+          </div>
+
+          {/* ✅ More “clickable” affordance: hover/active tint + subtle scale */}
+          <span
+            className={[
+              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
+              "border-slate-200 bg-white text-slate-700",
+              "group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:text-emerald-900",
+              "group-active:scale-[0.98] group-active:bg-emerald-100",
+              "shadow-sm"
+            ].join(" ")}
+            aria-hidden="true"
+          >
+            {open ? "˄" : "˅"}
+          </span>
+        </div>
+      </button>
+
+      {open && <div className="mt-4">{children}</div>}
+    </Card>
+  );
+}
+
 export default function HomePage() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
@@ -43,7 +102,6 @@ export default function HomePage() {
 
     goldGrams: "",
     goldRate: "",
-    // ✅ purity fields (lib already updated)
     goldKarat: "24k",
     goldCustomPurity: "",
 
@@ -67,6 +125,12 @@ export default function HomePage() {
   // ✅ Result card collapsed by default (persisted)
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
 
+  // ✅ Only one section open at a time (persisted). Default: Nisab open.
+  const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
+    "fp_zakat_open_section_v2",
+    "nisab"
+  );
+
   const prevEligibleRef = useRef<boolean>(false);
   const prevActiveRef = useRef<PillarKey>(active);
 
@@ -86,7 +150,6 @@ export default function HomePage() {
     const eligibleNow = Boolean(zakatResult?.eligible);
     const eligibleBefore = prevEligibleRef.current;
 
-    // only auto-expand on transition, not when arriving on zakat tab
     if (!switchedToZakat && !eligibleBefore && eligibleNow) {
       setResultOpen(true);
     }
@@ -94,7 +157,6 @@ export default function HomePage() {
     prevEligibleRef.current = eligibleNow;
   }, [active, zakatResult?.eligible, setResultOpen]);
 
-  // Spacer must roughly match tray height so form never hides under tray
   const TRAY_SPACER_HEIGHT = 360;
 
   const resetForm = () => {
@@ -120,6 +182,7 @@ export default function HomePage() {
     });
     setLastFetchedAt(null);
     setResultOpen(false);
+    setOpenSection("nisab");
   };
 
   const handleDownloadPDF = () => {
@@ -171,7 +234,6 @@ export default function HomePage() {
     }
   };
 
-  // Optional fetch (hook to a real API later). For now, it just demonstrates the flow.
   const handleFetchOnline = async () => {
     try {
       const mockGold = 14413.5;
@@ -188,7 +250,6 @@ export default function HomePage() {
     }
   };
 
-  // Manual rate field depends on selected basis
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? z.goldRate : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
@@ -196,18 +257,60 @@ export default function HomePage() {
   const estimatedNisab =
     zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
 
-  // Tray: short heading (always shown)
   const trayHeading = zakatResult?.breakdown?.nisabRateMissing
     ? `Add a ${zakatResult?.basis ?? basis} rate to check Nisab`
     : zakatResult?.eligible
     ? "Zakat is due"
     : "Zakat is not due";
 
+  // Totals for subtitles
+  const cashTotal = n(z.cash) + n(z.bank);
+
+  const karat = String(z.goldKarat || "24k").toLowerCase();
+  const purityFactor =
+    karat === "24k"
+      ? 1
+      : karat === "22k"
+      ? 22 / 24
+      : karat === "18k"
+      ? 18 / 24
+      : Math.max(0, Math.min(1, n(z.goldCustomPurity) / 100));
+
+  const goldValueApprox = n(z.goldGrams) * n(z.goldRate) * purityFactor;
+  const silverValueApprox = n(z.silverGrams) * n(z.silverRate);
+  const metalsTotal = goldValueApprox + silverValueApprox;
+
+  const otherTotal = n(z.investments) + n(z.businessAssets) + n(z.moneyLent);
+  const debtsTotal = n(z.debts);
+
+  const nisabSubtitle =
+    zakatResult?.breakdown?.nisabRateMissing
+      ? `Add ${basis} rate`
+      : estimatedNisab !== "₹ —"
+      ? `Threshold: ${estimatedNisab}`
+      : "Not entered";
+
+  const cashSubtitle = cashTotal > 0 ? `₹ ${formatINR(cashTotal)}` : "Not entered";
+  const metalsSubtitle =
+    metalsTotal > 0
+      ? `₹ ${formatINR(metalsTotal)}`
+      : n(z.goldGrams) > 0 ||
+        n(z.silverGrams) > 0 ||
+        n(z.goldRate) > 0 ||
+        n(z.silverRate) > 0
+      ? "Entered"
+      : "Not entered";
+  const otherSubtitle = otherTotal > 0 ? `₹ ${formatINR(otherTotal)}` : "Not entered";
+  const deductionsSubtitle = debtsTotal > 0 ? `₹ ${formatINR(debtsTotal)}` : "None";
+
+  const toggleSection = (section: Exclude<ZakatSection, null>) => {
+    setOpenSection((curr) => (curr === section ? null : section));
+  };
+
   return (
     <main className="min-h-screen">
       <header className="container-page pt-10 pb-4 text-center">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
-        <p className="mt-1 text-sm text-slate-500">Simple · Private · Offline</p>
 
         <div className="mt-6">
           <PillarTabs active={active} onChange={setActive} />
@@ -233,8 +336,12 @@ export default function HomePage() {
         ) : (
           <>
             <div className="mt-6 space-y-4">
-              {/* Nisab (Eligibility) */}
-              <Card title="NISAB (ELIGIBILITY)">
+              <CollapsibleCard
+                title="Nisab Eligibility"
+                subtitle={nisabSubtitle}
+                open={openSection === "nisab"}
+                onToggle={() => toggleSection("nisab")}
+              >
                 <div className="rounded-xl border border-slate-200 p-4">
                   <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
 
@@ -311,9 +418,14 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-              </Card>
+              </CollapsibleCard>
 
-              <Card title="CASH & SAVINGS">
+              <CollapsibleCard
+                title="Cash & Savings"
+                subtitle={cashSubtitle}
+                open={openSection === "cash"}
+                onToggle={() => toggleSection("cash")}
+              >
                 <div className="space-y-3">
                   <Field
                     label="Cash in hand"
@@ -330,11 +442,15 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
                   />
                 </div>
-              </Card>
+              </CollapsibleCard>
 
-              <Card title="PRECIOUS METALS">
+              <CollapsibleCard
+                title="Precious Metals"
+                subtitle={metalsSubtitle}
+                open={openSection === "metals"}
+                onToggle={() => toggleSection("metals")}
+              >
                 <div className="space-y-3">
-                  {/* ✅ CHANGE: Gold purity block moved ABOVE gold grams */}
                   <div>
                     <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
 
@@ -346,7 +462,7 @@ export default function HomePage() {
                           onClick={() => setZ((s: any) => ({ ...s, goldKarat: k }))}
                           className={[
                             "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                            z.goldKarat === k
+                            String(z.goldKarat || "24k").toLowerCase() === k
                               ? "border-emerald-300 bg-emerald-50 text-emerald-900"
                               : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                           ].join(" ")}
@@ -356,7 +472,7 @@ export default function HomePage() {
                       ))}
                     </div>
 
-                    {z.goldKarat === "custom" && (
+                    {String(z.goldKarat || "24k").toLowerCase() === "custom" && (
                       <div className="mt-3">
                         <Field
                           label="Custom purity (%)"
@@ -405,9 +521,14 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
                   />
                 </div>
-              </Card>
+              </CollapsibleCard>
 
-              <Card title="OTHER ASSETS">
+              <CollapsibleCard
+                title="Other Assets"
+                subtitle={otherSubtitle}
+                open={openSection === "other"}
+                onToggle={() => toggleSection("other")}
+              >
                 <div className="space-y-3">
                   <Field
                     label="Investments / savings"
@@ -431,9 +552,14 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
                   />
                 </div>
-              </Card>
+              </CollapsibleCard>
 
-              <Card title="DEDUCTIONS">
+              <CollapsibleCard
+                title="Deductions"
+                subtitle={deductionsSubtitle}
+                open={openSection === "deductions"}
+                onToggle={() => toggleSection("deductions")}
+              >
                 <div className="space-y-3">
                   <Field
                     label="Debts & liabilities"
@@ -443,7 +569,7 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
                   />
                 </div>
-              </Card>
+              </CollapsibleCard>
 
               <Accordion title="How Zakat is calculated">
                 <div className="text-sm text-slate-600 leading-relaxed space-y-2">
@@ -463,7 +589,6 @@ export default function HomePage() {
               <div style={{ height: TRAY_SPACER_HEIGHT }} />
             </div>
 
-            {/* Fixed bottom tray (result collapsible) */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
@@ -471,12 +596,19 @@ export default function HomePage() {
               >
                 <div className="max-w-md mx-auto pointer-events-auto">
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
-                    {/* Result (collapsible header always visible) */}
                     {zakatResult && (
                       <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
                         <button
                           type="button"
-                          onClick={() => setResultOpen((v) => !v)}
+                          onClick={() => {
+                            setResultOpen((v) => {
+                              const next = !v;
+                              if (next && zakatResult?.breakdown?.nisabRateMissing) {
+                                setOpenSection("metals");
+                              }
+                              return next;
+                            });
+                          }}
                           className="w-full text-left"
                           aria-expanded={resultOpen}
                         >
@@ -500,7 +632,6 @@ export default function HomePage() {
                           </div>
                         </button>
 
-                        {/* Expanded details */}
                         {resultOpen && (
                           <div className="mt-4">
                             {zakatResult.breakdown.nisabRateMissing ? (
@@ -540,7 +671,6 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {/* Actions */}
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <button
                         type="button"
