@@ -243,14 +243,9 @@ export default function HomePage() {
 
                   <p className="mt-3 text-xs leading-relaxed text-slate-600">
                     Nisab is the minimum wealth threshold used to decide whether Zakat is due. It is compared against
-                    your <b>total net assets</b> (cash, savings, metals, investments, etc.) — not just metals.
-                  </p>
-
-                  <div className="mt-3 text-xs leading-relaxed text-slate-600">
-                    <span className="font-semibold">Haul (1 lunar year):</span> This calculator assumes you’re checking
-                    your wealth on your annual Zakat date. If your net zakatable wealth stays above Nisab for a lunar
+                    your <b>total net assets</b> (cash, savings, metals, investments, etc.) — not just metals. If your net zakatable wealth stays above Nisab for a lunar
                     year, Zakat is due.
-                  </div>
+                  </p>
 
                   <div className="mt-4">
                     <div className="text-sm font-semibold text-slate-900">
