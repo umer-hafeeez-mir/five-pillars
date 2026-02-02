@@ -55,19 +55,23 @@ export default function HomePage() {
     nisabBasis: "silver"
   });
 
+  // Track optional fetch metadata (pure UI, app still works offline)
   const [lastFetchedAt, setLastFetchedAt] = usePersistedState<number | null>(
     "fp_rates_last_fetched_v1",
     null
   );
-
-  // ✅ Result card collapsed by default (persisted)
-  const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
 
   const pillar = PILLARS[active];
   const zakatResult = active === "zakat" ? calculateZakat(z) : null;
 
   // Spacer must roughly match tray height so form never hides under tray
   const TRAY_SPACER_HEIGHT = 360;
+
+  // Result collapsed by default (more real-estate)
+  const [resultExpanded, setResultExpanded] = usePersistedState<boolean>(
+    "fp_result_expanded_v1",
+    false
+  );
 
   const resetForm = () => {
     setZ({
@@ -89,15 +93,15 @@ export default function HomePage() {
       nisabBasis: "silver"
     });
     setLastFetchedAt(null);
-    setResultOpen(false);
+    setResultExpanded(false);
   };
 
   const handleDownloadPDF = () => {
     if (!zakatResult) return;
 
     const lines = [
-      `Zakat calculation (offline)`,
-      `Status: ${zakatResult.eligible ? "Due" : "Not due"}`,
+      `Zakat Calculation (offline)`,
+      `Status: ${zakatResult.eligible ? "Due" : "Not Due"}`,
       `Zakat: ₹ ${formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}`,
       `Net: ₹ ${formatINR(zakatResult.net)}`,
       `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`
@@ -119,14 +123,14 @@ export default function HomePage() {
       `Zakat: ₹ ${formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}`,
       `Net: ₹ ${formatINR(zakatResult.net)}`,
       `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`,
-      `Status: ${zakatResult.eligible ? "Due" : "Not due"}`
+      `Status: ${zakatResult.eligible ? "Due" : "Not Due"}`
     ].join(" · ");
 
     try {
       // @ts-ignore
       if (navigator.share) {
         // @ts-ignore
-        await navigator.share({ title: "Zakat calculation", text });
+        await navigator.share({ title: "Zakat Calculation", text });
         return;
       }
     } catch {
@@ -137,11 +141,11 @@ export default function HomePage() {
       await navigator.clipboard.writeText(text);
       alert("Copied to clipboard.");
     } catch {
-      window.prompt("Copy the result:", text);
+      window.prompt("Copy this text:", text);
     }
   };
 
-  // Optional fetch (hook to a real API later). For now, it just demonstrates the flow.
+  // OPTIONAL fetch (hook to a real API later). For now, it just demonstrates the flow:
   const handleFetchOnline = async () => {
     try {
       const mockGold = 14413.5;
@@ -154,24 +158,23 @@ export default function HomePage() {
       }
       setLastFetchedAt(Date.now());
     } catch {
-      alert("Could not fetch rates. You can still enter the rate manually.");
+      alert("Could not fetch rates. You can still enter rates manually.");
     }
   };
 
-  // Manual rate field depends on selected basis
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? z.goldRate : z.silverRate;
-  const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
+  const manualRateLabel =
+    basis === "gold" ? "Gold rate per gram (manual)" : "Silver rate per gram (manual)";
 
   const estimatedNisab =
     zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
 
-  // Tray: short heading (always shown)
-  const trayHeading = zakatResult?.breakdown?.nisabRateMissing
-    ? `Add a ${zakatResult?.basis ?? basis} rate to check Nisab`
-    : zakatResult?.eligible
-    ? "Zakat is due"
-    : "Zakat is not due";
+  const nisabHeadline =
+    basis === "gold" ? "Add a gold rate to check Nisab" : "Add a silver rate to check Nisab";
+
+  const nisabEmptySubtitle =
+    "Nisab is the minimum threshold used to decide if Zakat is due based on your total net assets (not just metals).";
 
   return (
     <main className="min-h-screen">
@@ -185,13 +188,8 @@ export default function HomePage() {
       </header>
 
       <section className="container-page pb-16">
-        {/* ✅ Remove icon on Zakat by passing undefined icon, and rename title */}
-<PillarHeader
-  title={active === "zakat" ? "Calculate Zakat" : pillar.title}
-  subtitle={pillar.subtitle}
-  icon={pillar.icon}
-  hideIcon={active === "zakat"}
-/>
+        <PillarHeader title={pillar.title} subtitle={pillar.subtitle} icon={pillar.icon} />
+
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
             {pillar.blocks.map((b, idx) => (
@@ -219,7 +217,7 @@ export default function HomePage() {
                           : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                       ].join(" ")}
                     >
-                      Silver (595g)
+                      Silver (612.36g)
                     </button>
 
                     <button
@@ -232,19 +230,14 @@ export default function HomePage() {
                           : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                       ].join(" ")}
                     >
-                      Gold (85g)
+                      Gold (87.48g)
                     </button>
                   </div>
 
-                  <p className="mt-3 text-xs leading-relaxed text-slate-600">
-                    Nisab is the minimum wealth threshold used to decide whether Zakat is due. It is compared against
-                    your <b>total net assets</b> (not just metals).
-                  </p>
+                  <p className="mt-3 text-xs leading-relaxed text-slate-600">{nisabEmptySubtitle}</p>
 
                   <div className="mt-4">
-                    <div className="text-sm font-semibold text-slate-900">
-                      {manualRateLabel} <span className="text-slate-500">(manual)</span>
-                    </div>
+                    <div className="text-sm font-semibold text-slate-900">{manualRateLabel}</div>
                     <div className="mt-2">
                       <Field
                         label=""
@@ -261,13 +254,13 @@ export default function HomePage() {
                       <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
                       <span className="font-semibold">{estimatedNisab}</span>{" "}
                       <span className="text-slate-500">
-                        (based on {basis === "gold" ? "85g gold" : "595g silver"} × your rate)
+                        (based on {basis === "gold" ? "87.48g gold" : "612.36g silver"} × your rate)
                       </span>
                     </div>
 
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <div className="text-xs text-slate-500">
-                        Last updated:{" "}
+                        Last fetched:{" "}
                         <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
                       </div>
 
@@ -287,14 +280,13 @@ export default function HomePage() {
                 <div className="space-y-3">
                   <Field
                     label="Cash in hand"
-                    hint="Money you have right now."
+                    hint="Money you currently have"
                     prefix="₹"
                     value={z.cash}
                     onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
                   />
                   <Field
                     label="Cash in bank"
-                    hint="Your current bank balance."
                     prefix="₹"
                     value={z.bank}
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
@@ -306,14 +298,12 @@ export default function HomePage() {
                 <div className="space-y-3">
                   <Field
                     label="Gold (grams)"
-                    hint="Weight of gold you own."
                     suffix="g"
                     value={z.goldGrams}
                     onChange={(v) => setZ((s: any) => ({ ...s, goldGrams: v }))}
                   />
                   <Field
-                    label="Gold rate (₹/g)"
-                    hint="Current market price per gram."
+                    label="Gold rate per gram"
                     prefix="₹"
                     value={z.goldRate}
                     onChange={(v) => setZ((s: any) => ({ ...s, goldRate: v }))}
@@ -321,14 +311,12 @@ export default function HomePage() {
 
                   <Field
                     label="Silver (grams)"
-                    hint="Weight of silver you own."
                     suffix="g"
                     value={z.silverGrams}
                     onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
                   />
                   <Field
-                    label="Silver rate (₹/g)"
-                    hint="Current market price per gram."
+                    label="Silver rate per gram"
                     prefix="₹"
                     value={z.silverRate}
                     onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
@@ -340,21 +328,18 @@ export default function HomePage() {
                 <div className="space-y-3">
                   <Field
                     label="Investments / savings"
-                    hint="Stocks, mutual funds, savings plans, etc."
                     prefix="₹"
                     value={z.investments}
                     onChange={(v) => setZ((s: any) => ({ ...s, investments: v }))}
                   />
                   <Field
                     label="Business assets"
-                    hint="Goods held for sale, business cash, receivables."
                     prefix="₹"
                     value={z.businessAssets}
                     onChange={(v) => setZ((s: any) => ({ ...s, businessAssets: v }))}
                   />
                   <Field
                     label="Money lent to others"
-                    hint="Money you expect to receive back."
                     prefix="₹"
                     value={z.moneyLent}
                     onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
@@ -365,8 +350,8 @@ export default function HomePage() {
               <Card title="DEDUCTIONS">
                 <div className="space-y-3">
                   <Field
-                    label="Debts & liabilities"
-                    hint="Bills or loans you must repay soon."
+                    label="Debts & bills due soon"
+                    hint="Only include short-term liabilities due within the coming year"
                     prefix="₹"
                     value={z.debts}
                     onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
@@ -375,24 +360,34 @@ export default function HomePage() {
               </Card>
 
               <Accordion title="How Zakat is calculated">
-                <div className="text-sm text-slate-600 leading-relaxed space-y-2">
+                <div className="text-sm text-slate-600 leading-relaxed space-y-3">
                   <p>
                     Zakat is estimated at <b>2.5%</b> of your <b>net zakatable wealth</b>.
                   </p>
+
                   <p className="text-sm">
-                    <b>Net</b> = (Cash + Bank + Gold value + Silver value + Investments + Business assets + Money lent) −
-                    Debts
+                    <b>Net</b> = (Cash + Bank + Gold value + Silver value + Investments + Business assets + Money lent)
+                    − (Debts & bills due soon)
                   </p>
+
                   <p>
-                    Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver rate).
+                    You are <b>eligible</b> if your Net is ≥ the <b>Nisab</b> threshold.
+                    Nisab is computed from your selected basis (gold or silver) and its rate per gram.
                   </p>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                    <b>Hawl (holding period):</b> This calculator assumes you are calculating on your Zakat date and that
+                    your eligible wealth has been held for approximately one lunar year. If you are unsure, consult a
+                    local scholar.
+                  </div>
                 </div>
               </Accordion>
 
+              {/* Spacer so the form never hides behind tray */}
               <div style={{ height: TRAY_SPACER_HEIGHT }} />
             </div>
 
-            {/* Fixed bottom tray (result collapsible) */}
+            {/* Fixed tray */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
@@ -400,48 +395,36 @@ export default function HomePage() {
               >
                 <div className="max-w-md mx-auto pointer-events-auto">
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
-                    {/* Result (collapsible header always visible) */}
                     {zakatResult && (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
-                        <button
-                          type="button"
-                          onClick={() => setResultOpen((v) => !v)}
-                          className="w-full text-left"
-                          aria-expanded={resultOpen}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">
-                                RESULT
-                              </div>
-                              <div className="mt-2 text-base font-semibold text-slate-900">{trayHeading}</div>
-                              <div className="mt-1 text-xs text-slate-500">
-                                {resultOpen ? "Tap to collapse" : "Tap to expand"}
-                              </div>
-                            </div>
-
-                            <span
-                              className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
-                              aria-hidden="true"
-                            >
-                              {resultOpen ? "–" : "+"}
-                            </span>
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">RESULT</div>
+                            <div className="mt-3 text-base font-semibold text-slate-900">{nisabHeadline}</div>
+                            {!resultExpanded && (
+                              <div className="mt-1 text-xs text-slate-500">Tap to expand</div>
+                            )}
                           </div>
-                        </button>
 
-                        {/* Expanded details */}
-                        {resultOpen && (
-                          <div className="mt-4">
+                          <button
+                            type="button"
+                            onClick={() => setResultExpanded((v) => !v)}
+                            className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                            aria-label={resultExpanded ? "Collapse result" : "Expand result"}
+                          >
+                            {resultExpanded ? "−" : "+"}
+                          </button>
+                        </div>
+
+                        {resultExpanded && (
+                          <>
                             {zakatResult.breakdown.nisabRateMissing ? (
-                              <div className="text-sm text-slate-600">
-                                You can enter your assets without metal rates, but we need the selected{" "}
-                                <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
-                              </div>
+                              <div className="mt-3 text-sm text-slate-600">{nisabEmptySubtitle}</div>
                             ) : (
-                              <div className="flex items-center justify-between gap-4">
+                              <div className="mt-4 flex items-center justify-between gap-4">
                                 <div>
                                   <div className="text-sm text-slate-600">
-                                    {zakatResult.eligible ? "Zakat to pay" : "Below Nisab"}
+                                    {zakatResult.eligible ? "Zakat to Pay" : "Below Nisab"}
                                   </div>
                                   <div className="mt-1 text-3xl font-semibold text-emerald-900">
                                     ₹ {formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}
@@ -460,16 +443,15 @@ export default function HomePage() {
                                       : "border-slate-200 bg-slate-100 text-slate-700"
                                   ].join(" ")}
                                 >
-                                  {zakatResult.eligible ? "Due" : "Not due"}
+                                  {zakatResult.eligible ? "Due" : "Not Due"}
                                 </span>
                               </div>
                             )}
-                          </div>
+                          </>
                         )}
                       </div>
                     )}
 
-                    {/* Actions */}
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <button
                         type="button"
