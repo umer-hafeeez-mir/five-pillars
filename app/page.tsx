@@ -34,68 +34,10 @@ function formatDateTime(ts?: number | null) {
   }
 }
 
-function n(v: any) {
-  if (v === "" || v === null || v === undefined) return 0;
-  const num = Number(v);
-  return Number.isFinite(num) ? num : 0;
-}
-
-type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
-
-function CollapsibleCard({
-  title,
-  subtitle,
-  open,
-  onToggle,
-  children
-}: {
-  title: string;
-  subtitle: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card title="">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={[
-          "group w-full text-left rounded-2xl transition",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        ].join(" ")}
-        aria-expanded={open}
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-lg font-semibold text-slate-900">{title}</div>
-            <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
-          </div>
-
-          {/* ✅ More “clickable” affordance: hover/active tint + subtle scale */}
-          <span
-            className={[
-              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
-              "border-slate-200 bg-white text-slate-700",
-              "group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:text-emerald-900",
-              "group-active:scale-[0.98] group-active:bg-emerald-100",
-              "shadow-sm"
-            ].join(" ")}
-            aria-hidden="true"
-          >
-            {open ? "˄" : "˅"}
-          </span>
-        </div>
-      </button>
-
-      {open && <div className="mt-4">{children}</div>}
-    </Card>
-  );
-}
-
 export default function HomePage() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
+  // Form state (what user is currently editing)
   const [z, setZ] = usePersistedState<ZakatForm>("fp_zakat_form_v3", {
     cash: "",
     bank: "",
@@ -122,42 +64,22 @@ export default function HomePage() {
     null
   );
 
-  // ✅ Result card collapsed by default (persisted)
+  // Result UI state
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
 
-  // ✅ Only one section open at a time (persisted). Default: Nisab open.
-  const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
-    "fp_zakat_open_section_v2",
-    "nisab"
-  );
+  // ✅ NEW: Result tray hidden until user clicks Calculate
+  const [showResultTray, setShowResultTray] = usePersistedState<boolean>("fp_show_result_tray_v1", false);
 
-  const prevEligibleRef = useRef<boolean>(false);
-  const prevActiveRef = useRef<PillarKey>(active);
+  // ✅ NEW: Snapshot used for calculation (only updates on Calculate)
+  const [calcZ, setCalcZ] = usePersistedState<ZakatForm | null>("fp_zakat_calc_snapshot_v1", null);
 
   const pillar = PILLARS[active];
-  const zakatResult = active === "zakat" ? calculateZakat(z) : null;
 
-  // ✅ Auto-expand result tray when zakat becomes due (false -> true)
-  useEffect(() => {
-    if (active !== "zakat") {
-      prevActiveRef.current = active;
-      return;
-    }
+  // ✅ Result is computed only from snapshot (so it doesn't change until Calculate)
+  const zakatResult = active === "zakat" && calcZ ? calculateZakat(calcZ) : null;
 
-    const switchedToZakat = prevActiveRef.current !== "zakat" && active === "zakat";
-    prevActiveRef.current = active;
-
-    const eligibleNow = Boolean(zakatResult?.eligible);
-    const eligibleBefore = prevEligibleRef.current;
-
-    if (!switchedToZakat && !eligibleBefore && eligibleNow) {
-      setResultOpen(true);
-    }
-
-    prevEligibleRef.current = eligibleNow;
-  }, [active, zakatResult?.eligible, setResultOpen]);
-
-  const TRAY_SPACER_HEIGHT = 360;
+  // Spacer must roughly match tray height so form never hides under tray
+  const TRAY_SPACER_HEIGHT = 300;
 
   const resetForm = () => {
     setZ({
@@ -181,28 +103,21 @@ export default function HomePage() {
       nisabBasis: "silver"
     });
     setLastFetchedAt(null);
+
+    // ✅ reset result state too
+    setCalcZ(null);
+    setShowResultTray(false);
     setResultOpen(false);
-    setOpenSection("nisab");
   };
 
-  const handleDownloadPDF = () => {
-    if (!zakatResult) return;
+  const handleCalculate = () => {
+    // Snapshot current form and show tray
+    setCalcZ(z);
+    setShowResultTray(true);
 
-    const lines = [
-      `Zakat calculation (offline)`,
-      `Status: ${zakatResult.eligible ? "Due" : "Not due"}`,
-      `Zakat: ₹ ${formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}`,
-      `Net: ₹ ${formatINR(zakatResult.net)}`,
-      `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`
-    ].join("\n");
-
-    const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "zakat-calculation.txt";
-    a.click();
-    URL.revokeObjectURL(url);
+    // Expand if due, else keep collapsed
+    const r = calculateZakat(z);
+    setResultOpen(Boolean(r?.eligible));
   };
 
   const handleShare = async () => {
@@ -234,6 +149,7 @@ export default function HomePage() {
     }
   };
 
+  // Optional fetch (hook to a real API later). For now, it just demonstrates the flow.
   const handleFetchOnline = async () => {
     try {
       const mockGold = 14413.5;
@@ -250,10 +166,12 @@ export default function HomePage() {
     }
   };
 
+  // Manual rate field depends on selected basis (edit state)
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? z.goldRate : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
 
+  // Estimated nisab should reflect snapshot if present (so UI matches result)
   const estimatedNisab =
     zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
 
@@ -263,54 +181,11 @@ export default function HomePage() {
     ? "Zakat is due"
     : "Zakat is not due";
 
-  // Totals for subtitles
-  const cashTotal = n(z.cash) + n(z.bank);
-
-  const karat = String(z.goldKarat || "24k").toLowerCase();
-  const purityFactor =
-    karat === "24k"
-      ? 1
-      : karat === "22k"
-      ? 22 / 24
-      : karat === "18k"
-      ? 18 / 24
-      : Math.max(0, Math.min(1, n(z.goldCustomPurity) / 100));
-
-  const goldValueApprox = n(z.goldGrams) * n(z.goldRate) * purityFactor;
-  const silverValueApprox = n(z.silverGrams) * n(z.silverRate);
-  const metalsTotal = goldValueApprox + silverValueApprox;
-
-  const otherTotal = n(z.investments) + n(z.businessAssets) + n(z.moneyLent);
-  const debtsTotal = n(z.debts);
-
-  const nisabSubtitle =
-    zakatResult?.breakdown?.nisabRateMissing
-      ? `Add ${basis} rate`
-      : estimatedNisab !== "₹ —"
-      ? `Threshold: ${estimatedNisab}`
-      : "Not entered";
-
-  const cashSubtitle = cashTotal > 0 ? `₹ ${formatINR(cashTotal)}` : "Not entered";
-  const metalsSubtitle =
-    metalsTotal > 0
-      ? `₹ ${formatINR(metalsTotal)}`
-      : n(z.goldGrams) > 0 ||
-        n(z.silverGrams) > 0 ||
-        n(z.goldRate) > 0 ||
-        n(z.silverRate) > 0
-      ? "Entered"
-      : "Not entered";
-  const otherSubtitle = otherTotal > 0 ? `₹ ${formatINR(otherTotal)}` : "Not entered";
-  const deductionsSubtitle = debtsTotal > 0 ? `₹ ${formatINR(debtsTotal)}` : "None";
-
-  const toggleSection = (section: Exclude<ZakatSection, null>) => {
-    setOpenSection((curr) => (curr === section ? null : section));
-  };
-
   return (
     <main className="min-h-screen">
       <header className="container-page pt-10 pb-4 text-center">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
+        <p className="mt-1 text-sm text-slate-500">Simple · Private · Offline</p>
 
         <div className="mt-6">
           <PillarTabs active={active} onChange={setActive} />
@@ -336,12 +211,8 @@ export default function HomePage() {
         ) : (
           <>
             <div className="mt-6 space-y-4">
-              <CollapsibleCard
-                title="Nisab Eligibility"
-                subtitle={nisabSubtitle}
-                open={openSection === "nisab"}
-                onToggle={() => toggleSection("nisab")}
-              >
+              {/* Nisab (Eligibility) */}
+              <Card title="NISAB (ELIGIBILITY)">
                 <div className="rounded-xl border border-slate-200 p-4">
                   <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
 
@@ -418,14 +289,9 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-              </CollapsibleCard>
+              </Card>
 
-              <CollapsibleCard
-                title="Cash & Savings"
-                subtitle={cashSubtitle}
-                open={openSection === "cash"}
-                onToggle={() => toggleSection("cash")}
-              >
+              <Card title="CASH & SAVINGS">
                 <div className="space-y-3">
                   <Field
                     label="Cash in hand"
@@ -442,15 +308,11 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
                   />
                 </div>
-              </CollapsibleCard>
+              </Card>
 
-              <CollapsibleCard
-                title="Precious Metals"
-                subtitle={metalsSubtitle}
-                open={openSection === "metals"}
-                onToggle={() => toggleSection("metals")}
-              >
+              <Card title="PRECIOUS METALS">
                 <div className="space-y-3">
+                  {/* Gold purity block */}
                   <div>
                     <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
 
@@ -462,7 +324,7 @@ export default function HomePage() {
                           onClick={() => setZ((s: any) => ({ ...s, goldKarat: k }))}
                           className={[
                             "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                            String(z.goldKarat || "24k").toLowerCase() === k
+                            z.goldKarat === k
                               ? "border-emerald-300 bg-emerald-50 text-emerald-900"
                               : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                           ].join(" ")}
@@ -472,7 +334,7 @@ export default function HomePage() {
                       ))}
                     </div>
 
-                    {String(z.goldKarat || "24k").toLowerCase() === "custom" && (
+                    {z.goldKarat === "custom" && (
                       <div className="mt-3">
                         <Field
                           label="Custom purity (%)"
@@ -521,14 +383,9 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
                   />
                 </div>
-              </CollapsibleCard>
+              </Card>
 
-              <CollapsibleCard
-                title="Other Assets"
-                subtitle={otherSubtitle}
-                open={openSection === "other"}
-                onToggle={() => toggleSection("other")}
-              >
+              <Card title="OTHER ASSETS">
                 <div className="space-y-3">
                   <Field
                     label="Investments / savings"
@@ -552,14 +409,9 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
                   />
                 </div>
-              </CollapsibleCard>
+              </Card>
 
-              <CollapsibleCard
-                title="Deductions"
-                subtitle={deductionsSubtitle}
-                open={openSection === "deductions"}
-                onToggle={() => toggleSection("deductions")}
-              >
+              <Card title="DEDUCTIONS">
                 <div className="space-y-3">
                   <Field
                     label="Debts & liabilities"
@@ -569,7 +421,7 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
                   />
                 </div>
-              </CollapsibleCard>
+              </Card>
 
               <Accordion title="How Zakat is calculated">
                 <div className="text-sm text-slate-600 leading-relaxed space-y-2">
@@ -589,6 +441,7 @@ export default function HomePage() {
               <div style={{ height: TRAY_SPACER_HEIGHT }} />
             </div>
 
+            {/* Bottom tray */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
@@ -596,27 +449,18 @@ export default function HomePage() {
               >
                 <div className="max-w-md mx-auto pointer-events-auto">
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
-                    {zakatResult && (
+                    {/* ✅ Result tray hidden until Calculate */}
+                    {showResultTray && zakatResult && (
                       <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
                         <button
                           type="button"
-                          onClick={() => {
-                            setResultOpen((v) => {
-                              const next = !v;
-                              if (next && zakatResult?.breakdown?.nisabRateMissing) {
-                                setOpenSection("metals");
-                              }
-                              return next;
-                            });
-                          }}
+                          onClick={() => setResultOpen((v) => !v)}
                           className="w-full text-left"
                           aria-expanded={resultOpen}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">
-                                RESULT
-                              </div>
+                              <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">RESULT</div>
                               <div className="mt-2 text-base font-semibold text-slate-900">{trayHeading}</div>
                               <div className="mt-1 text-xs text-slate-500">
                                 {resultOpen ? "Tap to collapse" : "Tap to expand"}
@@ -636,7 +480,7 @@ export default function HomePage() {
                           <div className="mt-4">
                             {zakatResult.breakdown.nisabRateMissing ? (
                               <div className="text-sm text-slate-600">
-                                You can enter your assets without metal rates, but we need the selected{" "}
+                                We compare your <b>total net assets</b> to Nisab. Add the selected{" "}
                                 <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
                               </div>
                             ) : (
@@ -671,31 +515,45 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    <div className="mt-3 grid grid-cols-2 gap-3">
+                    {/* ✅ NEW: Three buttons — Calculate / Share / Reset */}
+                    <div className="mt-3 grid grid-cols-3 gap-3">
                       <button
                         type="button"
-                        onClick={handleDownloadPDF}
-                        className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-3 font-semibold soft-shadow transition"
+                        onClick={handleCalculate}
+                        className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-3 text-sm font-semibold soft-shadow transition"
                       >
-                        Download PDF
+                        Calculate
                       </button>
 
                       <button
                         type="button"
                         onClick={handleShare}
-                        className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                        disabled={!showResultTray || !zakatResult}
+                        className={[
+                          "w-full rounded-xl py-3 text-sm font-semibold transition",
+                          !showResultTray || !zakatResult
+                            ? "border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                            : "border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900"
+                        ].join(" ")}
                       >
                         Share
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 text-sm font-semibold transition"
+                      >
+                        Reset
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="mt-3 w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 text-sm font-semibold transition"
-                    >
-                      Reset
-                    </button>
+                    {/* Small helper text when result is hidden */}
+                    {!showResultTray && (
+                      <div className="mt-3 text-xs text-slate-500 text-center">
+                        Enter values, then tap <b>Calculate</b> to see your result.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
