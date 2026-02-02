@@ -1,4 +1,10 @@
-import { HeartIcon, ClockIcon, MoonIcon, CrescentIcon, PinIcon } from "@/components/Icons";
+import {
+  HeartIcon,
+  ClockIcon,
+  MoonIcon,
+  CrescentIcon,
+  PinIcon
+} from "@/components/Icons";
 
 function Icon({ name }: { name: string }) {
   const cls = "w-6 h-6";
@@ -21,20 +27,28 @@ function Icon({ name }: { name: string }) {
 export default function PillarHeader({
   icon,
   title,
-  subtitle
+  subtitle,
+  hideIcon = false
 }: {
   icon: string;
   title: string;
   subtitle: string;
+  hideIcon?: boolean;
 }) {
   return (
     <div className="text-center mt-8">
-      <div className="mx-auto w-12 h-12 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
-        <Icon name={icon} />
-      </div>
-      <h2 className="mt-4 text-2xl font-semibold">{title}</h2>
+      {/* Icon block renders ONLY when hideIcon === false */}
+      {!hideIcon && (
+        <div className="mx-auto w-12 h-12 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
+          <Icon name={icon} />
+        </div>
+      )}
+
+      <h2 className={hideIcon ? "text-2xl font-semibold" : "mt-4 text-2xl font-semibold"}>
+        {title}
+      </h2>
+
       <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
     </div>
   );
 }
-

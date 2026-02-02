@@ -186,13 +186,12 @@ export default function HomePage() {
 
       <section className="container-page pb-16">
         {/* ✅ Remove icon on Zakat by passing undefined icon, and rename title */}
-        <PillarHeader
-          title={active === "zakat" ? "Calculate Zakat" : pillar.title}
-          subtitle={pillar.subtitle}
-          // @ts-ignore (in case icon is required, most components accept undefined)
-          icon={active === "zakat" ? undefined : pillar.icon}
-        />
-
+<PillarHeader
+  title={active === "zakat" ? "Calculate Zakat" : pillar.title}
+  subtitle={pillar.subtitle}
+  icon={pillar.icon}
+  hideIcon={active === "zakat"}
+/>
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
             {pillar.blocks.map((b, idx) => (
