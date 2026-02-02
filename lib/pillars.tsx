@@ -1,5 +1,6 @@
 "use client";
 
+export const PILLARS = { ... }
 import { useState } from "react";
 import Accordion from "@/components/Accordion";
 import Card from "@/components/Card";
