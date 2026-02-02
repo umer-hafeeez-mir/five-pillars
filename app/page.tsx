@@ -34,6 +34,55 @@ function formatDateTime(ts?: number | null) {
   }
 }
 
+function n(v: any) {
+  if (v === "" || v === null || v === undefined) return 0;
+  const num = Number(v);
+  return Number.isFinite(num) ? num : 0;
+}
+
+type ZakatSection = "cash" | "metals" | "other" | "deductions" | null;
+
+function CollapsibleCard({
+  title,
+  subtitle,
+  open,
+  onToggle,
+  children
+}: {
+  title: string;
+  subtitle: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card title="">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full text-left"
+        aria-expanded={open}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-lg font-semibold text-slate-900">{title}</div>
+            <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
+          </div>
+
+          <span
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
+            aria-hidden="true"
+          >
+            {open ? "˄" : "˅"}
+          </span>
+        </div>
+      </button>
+
+      {open && <div className="mt-4">{children}</div>}
+    </Card>
+  );
+}
+
 export default function HomePage() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
@@ -43,7 +92,6 @@ export default function HomePage() {
 
     goldGrams: "",
     goldRate: "",
-    // ✅ purity fields (lib already updated)
     goldKarat: "24k",
     goldCustomPurity: "",
 
@@ -66,6 +114,12 @@ export default function HomePage() {
 
   // ✅ Result card collapsed by default (persisted)
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
+
+  // ✅ Only one section open at a time (persisted)
+  const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
+    "fp_zakat_open_section_v1",
+    "cash"
+  );
 
   const prevEligibleRef = useRef<boolean>(false);
   const prevActiveRef = useRef<PillarKey>(active);
@@ -120,6 +174,7 @@ export default function HomePage() {
     });
     setLastFetchedAt(null);
     setResultOpen(false);
+    setOpenSection("cash");
   };
 
   const handleDownloadPDF = () => {
@@ -202,6 +257,43 @@ export default function HomePage() {
     : zakatResult?.eligible
     ? "Zakat is due"
     : "Zakat is not due";
+
+  // -------- Collapsible card subtitles (₹ totals) --------
+  const cashTotal = n(z.cash) + n(z.bank);
+
+  const karat = String(z.goldKarat || "24k").toLowerCase();
+  const purityFactor =
+    karat === "24k"
+      ? 1
+      : karat === "22k"
+      ? 22 / 24
+      : karat === "18k"
+      ? 18 / 24
+      : Math.max(0, Math.min(1, n(z.goldCustomPurity) / 100));
+
+  const goldValueApprox = n(z.goldGrams) * n(z.goldRate) * purityFactor;
+  const silverValueApprox = n(z.silverGrams) * n(z.silverRate);
+  const metalsTotal = goldValueApprox + silverValueApprox;
+
+  const otherTotal = n(z.investments) + n(z.businessAssets) + n(z.moneyLent);
+  const debtsTotal = n(z.debts);
+
+  const cashSubtitle = cashTotal > 0 ? `₹ ${formatINR(cashTotal)}` : "Not entered";
+  const metalsSubtitle =
+    metalsTotal > 0
+      ? `₹ ${formatINR(metalsTotal)}`
+      : n(z.goldGrams) > 0 ||
+        n(z.silverGrams) > 0 ||
+        n(z.goldRate) > 0 ||
+        n(z.silverRate) > 0
+      ? "Entered"
+      : "Not entered";
+  const otherSubtitle = otherTotal > 0 ? `₹ ${formatINR(otherTotal)}` : "Not entered";
+  const deductionsSubtitle = debtsTotal > 0 ? `₹ ${formatINR(debtsTotal)}` : "None";
+
+  const toggleSection = (section: Exclude<ZakatSection, null>) => {
+    setOpenSection((curr) => (curr === section ? null : section));
+  };
 
   return (
     <main className="min-h-screen">
@@ -313,7 +405,13 @@ export default function HomePage() {
                 </div>
               </Card>
 
-              <Card title="CASH & SAVINGS">
+              {/* ✅ Collapsible sections (only one open at a time) */}
+              <CollapsibleCard
+                title="Cash & Savings"
+                subtitle={cashSubtitle}
+                open={openSection === "cash"}
+                onToggle={() => toggleSection("cash")}
+              >
                 <div className="space-y-3">
                   <Field
                     label="Cash in hand"
@@ -330,11 +428,15 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
                   />
                 </div>
-              </Card>
+              </CollapsibleCard>
 
-              <Card title="PRECIOUS METALS">
+              <CollapsibleCard
+                title="Precious Metals"
+                subtitle={metalsSubtitle}
+                open={openSection === "metals"}
+                onToggle={() => toggleSection("metals")}
+              >
                 <div className="space-y-3">
-                  {/* ✅ CHANGE: Gold purity block moved ABOVE gold grams */}
                   <div>
                     <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
 
@@ -346,7 +448,7 @@ export default function HomePage() {
                           onClick={() => setZ((s: any) => ({ ...s, goldKarat: k }))}
                           className={[
                             "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                            z.goldKarat === k
+                            String(z.goldKarat || "24k").toLowerCase() === k
                               ? "border-emerald-300 bg-emerald-50 text-emerald-900"
                               : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                           ].join(" ")}
@@ -356,7 +458,7 @@ export default function HomePage() {
                       ))}
                     </div>
 
-                    {z.goldKarat === "custom" && (
+                    {String(z.goldKarat || "24k").toLowerCase() === "custom" && (
                       <div className="mt-3">
                         <Field
                           label="Custom purity (%)"
@@ -405,9 +507,14 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
                   />
                 </div>
-              </Card>
+              </CollapsibleCard>
 
-              <Card title="OTHER ASSETS">
+              <CollapsibleCard
+                title="Other Assets"
+                subtitle={otherSubtitle}
+                open={openSection === "other"}
+                onToggle={() => toggleSection("other")}
+              >
                 <div className="space-y-3">
                   <Field
                     label="Investments / savings"
@@ -431,9 +538,14 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
                   />
                 </div>
-              </Card>
+              </CollapsibleCard>
 
-              <Card title="DEDUCTIONS">
+              <CollapsibleCard
+                title="Deductions"
+                subtitle={deductionsSubtitle}
+                open={openSection === "deductions"}
+                onToggle={() => toggleSection("deductions")}
+              >
                 <div className="space-y-3">
                   <Field
                     label="Debts & liabilities"
@@ -443,7 +555,7 @@ export default function HomePage() {
                     onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
                   />
                 </div>
-              </Card>
+              </CollapsibleCard>
 
               <Accordion title="How Zakat is calculated">
                 <div className="text-sm text-slate-600 leading-relaxed space-y-2">
@@ -476,7 +588,22 @@ export default function HomePage() {
                       <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
                         <button
                           type="button"
-                          onClick={() => setResultOpen((v) => !v)}
+                          onClick={() => {
+                            setResultOpen((v) => {
+                              const next = !v;
+
+                              // ✅ Auto-open Precious Metals if nisab basis rate is missing AND user expands Result
+                              if (
+                                next &&
+                                zakatResult?.breakdown?.nisabRateMissing &&
+                                openSection !== "metals"
+                              ) {
+                                setOpenSection("metals");
+                              }
+
+                              return next;
+                            });
+                          }}
                           className="w-full text-left"
                           aria-expanded={resultOpen}
                         >
