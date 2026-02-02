@@ -57,15 +57,30 @@ function CollapsibleCard({
 }) {
   return (
     <Card title="">
-      <button type="button" onClick={onToggle} className="w-full text-left" aria-expanded={open}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={[
+          "group w-full text-left rounded-2xl transition",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        ].join(" ")}
+        aria-expanded={open}
+      >
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-lg font-semibold text-slate-900">{title}</div>
             <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
           </div>
 
+          {/* ✅ More “clickable” affordance: hover/active tint + subtle scale */}
           <span
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
+            className={[
+              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
+              "border-slate-200 bg-white text-slate-700",
+              "group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:text-emerald-900",
+              "group-active:scale-[0.98] group-active:bg-emerald-100",
+              "shadow-sm"
+            ].join(" ")}
             aria-hidden="true"
           >
             {open ? "˄" : "˅"}
@@ -110,8 +125,7 @@ export default function HomePage() {
   // ✅ Result card collapsed by default (persisted)
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
 
-  // ✅ Only one section open at a time (persisted)
-  // Default: Nisab is open on first load
+  // ✅ Only one section open at a time (persisted). Default: Nisab open.
   const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
     "fp_zakat_open_section_v2",
     "nisab"
@@ -136,7 +150,6 @@ export default function HomePage() {
     const eligibleNow = Boolean(zakatResult?.eligible);
     const eligibleBefore = prevEligibleRef.current;
 
-    // only auto-expand on transition, not when arriving on zakat tab
     if (!switchedToZakat && !eligibleBefore && eligibleNow) {
       setResultOpen(true);
     }
@@ -144,7 +157,6 @@ export default function HomePage() {
     prevEligibleRef.current = eligibleNow;
   }, [active, zakatResult?.eligible, setResultOpen]);
 
-  // Spacer must roughly match tray height so form never hides under tray
   const TRAY_SPACER_HEIGHT = 360;
 
   const resetForm = () => {
@@ -222,7 +234,6 @@ export default function HomePage() {
     }
   };
 
-  // Optional fetch (hook to a real API later). For now, it just demonstrates the flow.
   const handleFetchOnline = async () => {
     try {
       const mockGold = 14413.5;
@@ -239,7 +250,6 @@ export default function HomePage() {
     }
   };
 
-  // Manual rate field depends on selected basis
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? z.goldRate : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
@@ -247,14 +257,13 @@ export default function HomePage() {
   const estimatedNisab =
     zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
 
-  // Tray: short heading (always shown)
   const trayHeading = zakatResult?.breakdown?.nisabRateMissing
     ? `Add a ${zakatResult?.basis ?? basis} rate to check Nisab`
     : zakatResult?.eligible
     ? "Zakat is due"
     : "Zakat is not due";
 
-  // -------- Collapsible card subtitles (₹ totals) --------
+  // Totals for subtitles
   const cashTotal = n(z.cash) + n(z.bank);
 
   const karat = String(z.goldKarat || "24k").toLowerCase();
@@ -328,7 +337,6 @@ export default function HomePage() {
         ) : (
           <>
             <div className="mt-6 space-y-4">
-              {/* ✅ Nisab is now a collapsible card too (so opening any other closes it) */}
               <CollapsibleCard
                 title="Nisab Eligibility"
                 subtitle={nisabSubtitle}
@@ -582,7 +590,6 @@ export default function HomePage() {
               <div style={{ height: TRAY_SPACER_HEIGHT }} />
             </div>
 
-            {/* Fixed bottom tray (result collapsible) */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
@@ -597,12 +604,9 @@ export default function HomePage() {
                           onClick={() => {
                             setResultOpen((v) => {
                               const next = !v;
-
-                              // ✅ Auto-open Precious Metals if nisab basis rate is missing AND user expands Result
                               if (next && zakatResult?.breakdown?.nisabRateMissing) {
-                                setOpenSection("metals"); // closes all others including Nisab
+                                setOpenSection("metals");
                               }
-
                               return next;
                             });
                           }}
