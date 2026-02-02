@@ -311,7 +311,6 @@ export default function HomePage() {
     <main className="min-h-screen">
       <header className="container-page pt-10 pb-4 text-center">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
-        <p className="mt-1 text-sm text-slate-500">Simple · Private · Offline</p>
 
         <div className="mt-6">
           <PillarTabs active={active} onChange={setActive} />
