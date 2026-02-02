@@ -21,7 +21,6 @@ function formatDateTime(ts?: number | null) {
   if (!ts) return "—";
   try {
     const d = new Date(ts);
-    // dd/mm/yyyy, hh:mm:ss (simple, locale-independent enough)
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
@@ -56,7 +55,6 @@ export default function HomePage() {
     nisabBasis: "silver"
   });
 
-  // Track optional fetch metadata (pure UI, app still works offline)
   const [lastFetchedAt, setLastFetchedAt] = usePersistedState<number | null>(
     "fp_rates_last_fetched_v1",
     null
@@ -94,8 +92,8 @@ export default function HomePage() {
     if (!zakatResult) return;
 
     const lines = [
-      `Zakat Calculation (offline)`,
-      `Status: ${zakatResult.eligible ? "Due" : "Not Due"}`,
+      `Zakat calculation (offline)`,
+      `Status: ${zakatResult.eligible ? "Due" : "Not due"}`,
       `Zakat: ₹ ${formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}`,
       `Net: ₹ ${formatINR(zakatResult.net)}`,
       `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`
@@ -117,14 +115,14 @@ export default function HomePage() {
       `Zakat: ₹ ${formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}`,
       `Net: ₹ ${formatINR(zakatResult.net)}`,
       `Nisab (${zakatResult.basis}): ₹ ${formatINR(zakatResult.nisab)}`,
-      `Status: ${zakatResult.eligible ? "Due" : "Not Due"}`
+      `Status: ${zakatResult.eligible ? "Due" : "Not due"}`
     ].join(" · ");
 
     try {
       // @ts-ignore
       if (navigator.share) {
         // @ts-ignore
-        await navigator.share({ title: "Zakat Calculation", text });
+        await navigator.share({ title: "Zakat calculation", text });
         return;
       }
     } catch {
@@ -135,19 +133,13 @@ export default function HomePage() {
       await navigator.clipboard.writeText(text);
       alert("Copied to clipboard.");
     } catch {
-      window.prompt("Copy this text:", text);
+      window.prompt("Copy the result:", text);
     }
   };
 
-  // OPTIONAL fetch (hook to a real API later). For now, it just demonstrates the flow:
-  // - Doesn’t break offline
-  // - Updates the selected basis rate field
-  // Replace the mock rates later with a real API call + env key.
+  // Optional fetch (hook to a real API later). For now, it just demonstrates the flow.
   const handleFetchOnline = async () => {
     try {
-      // MOCK: replace with real fetch later
-      // Example: const res = await fetch("/api/metals?basis=" + z.nisabBasis);
-      // const data = await res.json(); rate = data.rate;
       const mockGold = 14413.5;
       const mockSilver = 165.25;
 
@@ -158,14 +150,14 @@ export default function HomePage() {
       }
       setLastFetchedAt(Date.now());
     } catch {
-      alert("Could not fetch rates. You can still enter rates manually.");
+      alert("Could not fetch rates. You can still enter the rate manually.");
     }
   };
 
-  // Helper: the “manual rate” field shown in the Nisab card should depend on basis
+  // Manual rate field depends on selected basis
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? z.goldRate : z.silverRate;
-  const manualRateLabel = basis === "gold" ? "Gold rate per gram (enter-manually)" : "Silver rate per gram (enter-manually)";
+  const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
 
   const estimatedNisab =
     zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
@@ -195,10 +187,10 @@ export default function HomePage() {
         ) : (
           <>
             <div className="mt-6 space-y-4">
-              {/* ✅ Nisab (Eligibility) — bring back API-related fields like your screenshot */}
+              {/* Nisab (Eligibility) */}
               <Card title="NISAB (ELIGIBILITY)">
                 <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="text-sm font-semibold text-slate-900">Choose your Nisab</div>
+                  <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
@@ -229,11 +221,14 @@ export default function HomePage() {
                   </div>
 
                   <p className="mt-3 text-xs leading-relaxed text-slate-600">
-                    Nisab determines whether Zakat is due based on your <b>total net assets</b> (not just metals).
+                    Nisab is the minimum wealth threshold used to decide whether Zakat is due. It is compared against
+                    your <b>total net assets</b> (not just metals).
                   </p>
 
                   <div className="mt-4">
-                    <div className="text-sm font-semibold text-slate-900">{manualRateLabel}</div>
+                    <div className="text-sm font-semibold text-slate-900">
+                      {manualRateLabel} <span className="text-slate-500">(manual)</span>
+                    </div>
                     <div className="mt-2">
                       <Field
                         label=""
@@ -256,7 +251,8 @@ export default function HomePage() {
 
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <div className="text-xs text-slate-500">
-                        Last fetched: <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
+                        Last updated:{" "}
+                        <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
                       </div>
 
                       <button
@@ -275,13 +271,14 @@ export default function HomePage() {
                 <div className="space-y-3">
                   <Field
                     label="Cash in hand"
-                    hint="Money you currently have"
+                    hint="Money you have right now."
                     prefix="₹"
                     value={z.cash}
                     onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
                   />
                   <Field
                     label="Cash in bank"
+                    hint="Your current bank balance."
                     prefix="₹"
                     value={z.bank}
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
@@ -293,12 +290,14 @@ export default function HomePage() {
                 <div className="space-y-3">
                   <Field
                     label="Gold (grams)"
+                    hint="Weight of gold you own."
                     suffix="g"
                     value={z.goldGrams}
                     onChange={(v) => setZ((s: any) => ({ ...s, goldGrams: v }))}
                   />
                   <Field
-                    label="Gold rate per gram"
+                    label="Gold rate (₹/g)"
+                    hint="Current market price per gram."
                     prefix="₹"
                     value={z.goldRate}
                     onChange={(v) => setZ((s: any) => ({ ...s, goldRate: v }))}
@@ -306,12 +305,14 @@ export default function HomePage() {
 
                   <Field
                     label="Silver (grams)"
+                    hint="Weight of silver you own."
                     suffix="g"
                     value={z.silverGrams}
                     onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
                   />
                   <Field
-                    label="Silver rate per gram"
+                    label="Silver rate (₹/g)"
+                    hint="Current market price per gram."
                     prefix="₹"
                     value={z.silverRate}
                     onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
@@ -322,19 +323,22 @@ export default function HomePage() {
               <Card title="OTHER ASSETS">
                 <div className="space-y-3">
                   <Field
-                    label="Investments / Savings"
+                    label="Investments / savings"
+                    hint="Stocks, mutual funds, savings plans, etc."
                     prefix="₹"
                     value={z.investments}
                     onChange={(v) => setZ((s: any) => ({ ...s, investments: v }))}
                   />
                   <Field
                     label="Business assets"
+                    hint="Goods held for sale, business cash, receivables."
                     prefix="₹"
                     value={z.businessAssets}
                     onChange={(v) => setZ((s: any) => ({ ...s, businessAssets: v }))}
                   />
                   <Field
                     label="Money lent to others"
+                    hint="Money you expect to receive back."
                     prefix="₹"
                     value={z.moneyLent}
                     onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
@@ -346,7 +350,7 @@ export default function HomePage() {
                 <div className="space-y-3">
                   <Field
                     label="Debts & liabilities"
-                    hint="Money you owe and must repay"
+                    hint="Bills or loans you must repay soon."
                     prefix="₹"
                     value={z.debts}
                     onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
@@ -357,15 +361,14 @@ export default function HomePage() {
               <Accordion title="How Zakat is calculated">
                 <div className="text-sm text-slate-600 leading-relaxed space-y-2">
                   <p>
-                    Zakat is estimated at <b>2.5%</b> of your <b>net zakatable wealth</b>:
+                    Zakat is estimated at <b>2.5%</b> of your <b>net zakatable wealth</b>.
                   </p>
                   <p className="text-sm">
                     <b>Net</b> = (Cash + Bank + Gold value + Silver value + Investments + Business assets + Money lent) −
                     Debts
                   </p>
                   <p>
-                    You are <b>eligible</b> if your Net is ≥ the <b>Nisab</b> threshold.
-                    Nisab is computed from your selected basis (gold or silver) and its rate per gram.
+                    Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver rate).
                   </p>
                 </div>
               </Accordion>
@@ -374,18 +377,13 @@ export default function HomePage() {
               <div style={{ height: TRAY_SPACER_HEIGHT }} />
             </div>
 
-            {/* ✅ Fixed tray WITHOUT full-width banner look:
-                - No border-t across screen
-                - No bg color across full width
-                - Only the inner max-w tray content is visible as a card
-            */}
+            {/* Fixed bottom tray */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
                 style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
               >
                 <div className="max-w-md mx-auto pointer-events-auto">
-                  {/* tray shell (this is what you SEE) */}
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
                     {/* Result */}
                     {zakatResult && (
@@ -395,18 +393,18 @@ export default function HomePage() {
                         {zakatResult.breakdown.nisabRateMissing ? (
                           <div className="mt-4">
                             <div className="text-base font-semibold text-slate-900">
-                              Enter {zakatResult.basis} rate to calculate Nisab
+                              Add a {zakatResult.basis} rate to check Nisab
                             </div>
                             <div className="mt-2 text-sm text-slate-600">
-                              You selected <b>{zakatResult.basis}</b> as your nisab basis. Add its rate per gram above
-                              to compute eligibility.
+                              You can enter assets without metal rates, but we need the selected{" "}
+                              <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
                             </div>
                           </div>
                         ) : (
                           <div className="mt-4 flex items-center justify-between gap-4">
                             <div>
                               <div className="text-sm text-slate-600">
-                                {zakatResult.eligible ? "Zakat to Pay" : "Below Nisab"}
+                                {zakatResult.eligible ? "Zakat to pay" : "Below Nisab"}
                               </div>
                               <div className="mt-1 text-3xl font-semibold text-emerald-900">
                                 ₹ {formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}
@@ -425,7 +423,7 @@ export default function HomePage() {
                                   : "border-slate-200 bg-slate-100 text-slate-700"
                               ].join(" ")}
                             >
-                              {zakatResult.eligible ? "Due" : "Not Due"}
+                              {zakatResult.eligible ? "Due" : "Not due"}
                             </span>
                           </div>
                         )}
