@@ -33,6 +33,65 @@ function formatDateTime(ts?: number | null) {
     return "—";
   }
 }
+function n(v: any) {
+  if (v === "" || v === null || v === undefined) return 0;
+  const num = Number(v);
+  return Number.isFinite(num) ? num : 0;
+}
+
+type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
+
+function CollapsibleCard({
+  title,
+  subtitle,
+  open,
+  onToggle,
+  children
+}: {
+  title: string;
+  subtitle: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card title="">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={[
+          "group w-full text-left rounded-2xl transition",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        ].join(" ")}
+        aria-expanded={open}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-lg font-semibold text-slate-900">{title}</div>
+            <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
+          </div>
+
+          {/* ✅ More “clickable” affordance: hover/active tint + subtle scale */}
+          <span
+            className={[
+              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
+              "border-slate-200 bg-white text-slate-700",
+              "group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:text-emerald-900",
+              "group-active:scale-[0.98] group-active:bg-emerald-100",
+              "shadow-sm"
+            ].join(" ")}
+            aria-hidden="true"
+          >
+            {open ? "˄" : "˅"}
+          </span>
+        </div>
+      </button>
+
+      {open && <div className="mt-4">{children}</div>}
+    </Card>
+  );
+}
+
 
 export default function HomePage() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
