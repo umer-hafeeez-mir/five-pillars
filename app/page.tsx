@@ -10,11 +10,6 @@ import usePersistedState from "@/lib/usePersistedState";
 import { PILLARS, PillarKey } from "@/lib/pillars";
 import { calculateZakat, ZakatForm } from "@/lib/zakat";
 
-// ✅ Minimal UI-only constants (labels/helptext)
-// (Actual calculation constants should live in lib/zakat.ts)
-const SILVER_NISAB_GRAMS = 612.36;
-const GOLD_NISAB_GRAMS = 87.48;
-
 function formatINR(n: number) {
   try {
     return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
@@ -48,6 +43,9 @@ export default function HomePage() {
 
     goldGrams: "",
     goldRate: "",
+    // ✅ purity fields (lib already updated)
+    goldKarat: "24k",
+    goldCustomPurity: "",
 
     silverGrams: "",
     silverRate: "",
@@ -68,34 +66,33 @@ export default function HomePage() {
 
   // ✅ Result card collapsed by default (persisted)
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
+
   const prevEligibleRef = useRef<boolean>(false);
   const prevActiveRef = useRef<PillarKey>(active);
 
   const pillar = PILLARS[active];
   const zakatResult = active === "zakat" ? calculateZakat(z) : null;
 
+  // ✅ Auto-expand result tray when zakat becomes due (false -> true)
   useEffect(() => {
-  // Only react on Zakat tab
-  if (active !== "zakat") {
+    if (active !== "zakat") {
+      prevActiveRef.current = active;
+      return;
+    }
+
+    const switchedToZakat = prevActiveRef.current !== "zakat" && active === "zakat";
     prevActiveRef.current = active;
-    return;
-  }
 
-  const switchedToZakat =
-    prevActiveRef.current !== "zakat" && active === "zakat";
+    const eligibleNow = Boolean(zakatResult?.eligible);
+    const eligibleBefore = prevEligibleRef.current;
 
-  prevActiveRef.current = active;
+    // only auto-expand on transition, not when arriving on zakat tab
+    if (!switchedToZakat && !eligibleBefore && eligibleNow) {
+      setResultOpen(true);
+    }
 
-  const eligibleNow = Boolean(zakatResult?.eligible);
-  const eligibleBefore = prevEligibleRef.current;
-
-  // Auto-expand ONLY when eligibility changes from Not Due -> Due
-  if (!switchedToZakat && !eligibleBefore && eligibleNow) {
-    setResultOpen(true);
-  }
-
-  prevEligibleRef.current = eligibleNow;
-}, [active, zakatResult?.eligible, setResultOpen]);
+    prevEligibleRef.current = eligibleNow;
+  }, [active, zakatResult?.eligible, setResultOpen]);
 
   // Spacer must roughly match tray height so form never hides under tray
   const TRAY_SPACER_HEIGHT = 360;
@@ -107,6 +104,8 @@ export default function HomePage() {
 
       goldGrams: "",
       goldRate: "",
+      goldKarat: "24k",
+      goldCustomPurity: "",
 
       silverGrams: "",
       silverRate: "",
@@ -250,7 +249,7 @@ export default function HomePage() {
                           : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                       ].join(" ")}
                     >
-                      Silver ({SILVER_NISAB_GRAMS}g)
+                      Silver (612.36g)
                     </button>
 
                     <button
@@ -263,14 +262,13 @@ export default function HomePage() {
                           : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                       ].join(" ")}
                     >
-                      Gold ({GOLD_NISAB_GRAMS}g)
+                      Gold (87.48g)
                     </button>
                   </div>
 
                   <p className="mt-3 text-xs leading-relaxed text-slate-600">
                     Nisab is the minimum wealth threshold used to decide whether Zakat is due. It is compared against
-                    your <b>total net assets</b> (cash, savings, metals, investments, etc.) — not just metals. If your net zakatable wealth stays above Nisab for a lunar
-                    year, Zakat is due.
+                    your <b>total net assets</b> (not just metals).
                   </p>
 
                   <div className="mt-4">
@@ -293,8 +291,7 @@ export default function HomePage() {
                       <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
                       <span className="font-semibold">{estimatedNisab}</span>{" "}
                       <span className="text-slate-500">
-                        (based on {basis === "gold" ? `${GOLD_NISAB_GRAMS}g gold` : `${SILVER_NISAB_GRAMS}g silver`} ×
-                        your rate)
+                        (based on {basis === "gold" ? "87.48g gold" : "612.36g silver"} × your rate)
                       </span>
                     </div>
 
@@ -337,6 +334,45 @@ export default function HomePage() {
 
               <Card title="PRECIOUS METALS">
                 <div className="space-y-3">
+                  {/* ✅ CHANGE: Gold purity block moved ABOVE gold grams */}
+                  <div>
+                    <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
+
+                    <div className="mt-2 grid grid-cols-4 gap-2">
+                      {(["24k", "22k", "18k", "custom"] as const).map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => setZ((s: any) => ({ ...s, goldKarat: k }))}
+                          className={[
+                            "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                            z.goldKarat === k
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                              : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                          ].join(" ")}
+                        >
+                          {k === "custom" ? "Custom" : k.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+
+                    {z.goldKarat === "custom" && (
+                      <div className="mt-3">
+                        <Field
+                          label="Custom purity (%)"
+                          hint="Example: 91.6 for 22k, 75 for 18k"
+                          suffix="%"
+                          value={z.goldCustomPurity}
+                          onChange={(v) => setZ((s: any) => ({ ...s, goldCustomPurity: v }))}
+                        />
+                      </div>
+                    )}
+
+                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                      Jewellery value is adjusted by purity (e.g., 18k = 75%). Nisab always uses pure gold/silver.
+                    </p>
+                  </div>
+
                   <Field
                     label="Gold (grams)"
                     hint="Weight of gold you own."
@@ -344,6 +380,7 @@ export default function HomePage() {
                     value={z.goldGrams}
                     onChange={(v) => setZ((s: any) => ({ ...s, goldGrams: v }))}
                   />
+
                   <Field
                     label="Gold rate (₹/g)"
                     hint="Current market price per gram."
@@ -359,6 +396,7 @@ export default function HomePage() {
                     value={z.silverGrams}
                     onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
                   />
+
                   <Field
                     label="Silver rate (₹/g)"
                     hint="Current market price per gram."
@@ -398,8 +436,8 @@ export default function HomePage() {
               <Card title="DEDUCTIONS">
                 <div className="space-y-3">
                   <Field
-                    label="Short-term debts & liabilities"
-                    hint="Only include amounts due soon (e.g., within the year): bills, credit cards, near-term loan payments."
+                    label="Debts & liabilities"
+                    hint="Bills or loans you must repay soon."
                     prefix="₹"
                     value={z.debts}
                     onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
@@ -418,9 +456,6 @@ export default function HomePage() {
                   </p>
                   <p>
                     Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver rate).
-                  </p>
-                  <p className="text-sm">
-                    <b>Haul:</b> This calculator assumes you are checking on your annual Zakat date (1 lunar year).
                   </p>
                 </div>
               </Accordion>
@@ -470,9 +505,8 @@ export default function HomePage() {
                           <div className="mt-4">
                             {zakatResult.breakdown.nisabRateMissing ? (
                               <div className="text-sm text-slate-600">
-                                Nisab is based on your selected <b>{zakatResult.basis}</b> rate, but it is compared
-                                against your <b>total net assets</b> (cash, savings, metals, investments, etc.). Enter
-                                the {zakatResult.basis} rate above to calculate Nisab and confirm whether Zakat is due.
+                                You can enter your assets without metal rates, but we need the selected{" "}
+                                <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
                               </div>
                             ) : (
                               <div className="flex items-center justify-between gap-4">
