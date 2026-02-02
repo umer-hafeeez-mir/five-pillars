@@ -9,6 +9,11 @@ import usePersistedState from "@/lib/usePersistedState";
 import { PILLARS, PillarKey } from "@/lib/pillars";
 import { calculateZakat, ZakatForm } from "@/lib/zakat";
 
+// ✅ Minimal UI-only constants (labels/helptext)
+// (Actual calculation constants should live in lib/zakat.ts)
+const SILVER_NISAB_GRAMS = 612.36;
+const GOLD_NISAB_GRAMS = 87.48;
+
 function formatINR(n: number) {
   try {
     return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
@@ -185,13 +190,13 @@ export default function HomePage() {
       </header>
 
       <section className="container-page pb-16">
-        {/* ✅ Remove icon on Zakat by passing undefined icon, and rename title */}
-<PillarHeader
-  title={active === "zakat" ? "Calculate Zakat" : pillar.title}
-  subtitle={pillar.subtitle}
-  icon={pillar.icon}
-  hideIcon={active === "zakat"}
-/>
+        <PillarHeader
+          title={active === "zakat" ? "Calculate Zakat" : pillar.title}
+          subtitle={pillar.subtitle}
+          icon={pillar.icon}
+          hideIcon={active === "zakat"}
+        />
+
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
             {pillar.blocks.map((b, idx) => (
@@ -219,7 +224,7 @@ export default function HomePage() {
                           : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                       ].join(" ")}
                     >
-                      Silver (595g)
+                      Silver ({SILVER_NISAB_GRAMS}g)
                     </button>
 
                     <button
@@ -232,13 +237,14 @@ export default function HomePage() {
                           : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                       ].join(" ")}
                     >
-                      Gold (85g)
+                      Gold ({GOLD_NISAB_GRAMS}g)
                     </button>
                   </div>
 
                   <p className="mt-3 text-xs leading-relaxed text-slate-600">
                     Nisab is the minimum wealth threshold used to decide whether Zakat is due. It is compared against
-                    your <b>total net assets</b> (not just metals).
+                    your <b>total net assets</b> (cash, savings, metals, investments, etc.) — not just metals. If your net zakatable wealth stays above Nisab for a lunar
+                    year, Zakat is due.
                   </p>
 
                   <div className="mt-4">
@@ -261,7 +267,8 @@ export default function HomePage() {
                       <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
                       <span className="font-semibold">{estimatedNisab}</span>{" "}
                       <span className="text-slate-500">
-                        (based on {basis === "gold" ? "85g gold" : "595g silver"} × your rate)
+                        (based on {basis === "gold" ? `${GOLD_NISAB_GRAMS}g gold` : `${SILVER_NISAB_GRAMS}g silver`} ×
+                        your rate)
                       </span>
                     </div>
 
@@ -365,8 +372,8 @@ export default function HomePage() {
               <Card title="DEDUCTIONS">
                 <div className="space-y-3">
                   <Field
-                    label="Debts & liabilities"
-                    hint="Bills or loans you must repay soon."
+                    label="Short-term debts & liabilities"
+                    hint="Only include amounts due soon (e.g., within the year): bills, credit cards, near-term loan payments."
                     prefix="₹"
                     value={z.debts}
                     onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
@@ -385,6 +392,9 @@ export default function HomePage() {
                   </p>
                   <p>
                     Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver rate).
+                  </p>
+                  <p className="text-sm">
+                    <b>Haul:</b> This calculator assumes you are checking on your annual Zakat date (1 lunar year).
                   </p>
                 </div>
               </Accordion>
@@ -434,8 +444,9 @@ export default function HomePage() {
                           <div className="mt-4">
                             {zakatResult.breakdown.nisabRateMissing ? (
                               <div className="text-sm text-slate-600">
-                                You can enter your assets without metal rates, but we need the selected{" "}
-                                <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
+                                Nisab is based on your selected <b>{zakatResult.basis}</b> rate, but it is compared
+                                against your <b>total net assets</b> (cash, savings, metals, investments, etc.). Enter
+                                the {zakatResult.basis} rate above to calculate Nisab and confirm whether Zakat is due.
                               </div>
                             ) : (
                               <div className="flex items-center justify-between gap-4">
