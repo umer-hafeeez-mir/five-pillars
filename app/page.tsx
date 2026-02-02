@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import PillarTabs from "@/components/PillarTabs";
 import PillarHeader from "@/components/PillarHeader";
 import Card from "@/components/Card";
@@ -67,9 +68,34 @@ export default function HomePage() {
 
   // ✅ Result card collapsed by default (persisted)
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
+  const prevEligibleRef = useRef<boolean>(false);
+  const prevActiveRef = useRef<PillarKey>(active);
 
   const pillar = PILLARS[active];
   const zakatResult = active === "zakat" ? calculateZakat(z) : null;
+
+  useEffect(() => {
+  // Only react on Zakat tab
+  if (active !== "zakat") {
+    prevActiveRef.current = active;
+    return;
+  }
+
+  const switchedToZakat =
+    prevActiveRef.current !== "zakat" && active === "zakat";
+
+  prevActiveRef.current = active;
+
+  const eligibleNow = Boolean(zakatResult?.eligible);
+  const eligibleBefore = prevEligibleRef.current;
+
+  // Auto-expand ONLY when eligibility changes from Not Due -> Due
+  if (!switchedToZakat && !eligibleBefore && eligibleNow) {
+    setResultOpen(true);
+  }
+
+  prevEligibleRef.current = eligibleNow;
+}, [active, zakatResult?.eligible, setResultOpen]);
 
   // Spacer must roughly match tray height so form never hides under tray
   const TRAY_SPACER_HEIGHT = 360;
