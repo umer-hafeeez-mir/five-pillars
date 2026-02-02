@@ -60,6 +60,9 @@ export default function HomePage() {
     null
   );
 
+  // ✅ Result card collapsed by default (persisted)
+  const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
+
   const pillar = PILLARS[active];
   const zakatResult = active === "zakat" ? calculateZakat(z) : null;
 
@@ -86,6 +89,7 @@ export default function HomePage() {
       nisabBasis: "silver"
     });
     setLastFetchedAt(null);
+    setResultOpen(false);
   };
 
   const handleDownloadPDF = () => {
@@ -162,6 +166,13 @@ export default function HomePage() {
   const estimatedNisab =
     zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
 
+  // Tray: short heading (always shown)
+  const trayHeading = zakatResult?.breakdown?.nisabRateMissing
+    ? `Add a ${zakatResult?.basis ?? basis} rate to check Nisab`
+    : zakatResult?.eligible
+    ? "Zakat is due"
+    : "Zakat is not due";
+
   return (
     <main className="min-h-screen">
       <header className="container-page pt-10 pb-4 text-center">
@@ -174,7 +185,13 @@ export default function HomePage() {
       </header>
 
       <section className="container-page pb-16">
-        <PillarHeader title={pillar.title} subtitle={pillar.subtitle} icon={pillar.icon} />
+        {/* ✅ Remove icon on Zakat by passing undefined icon, and rename title */}
+        <PillarHeader
+          title={active === "zakat" ? "Calculate Zakat" : pillar.title}
+          subtitle={pillar.subtitle}
+          // @ts-ignore (in case icon is required, most components accept undefined)
+          icon={active === "zakat" ? undefined : pillar.icon}
+        />
 
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
@@ -373,11 +390,10 @@ export default function HomePage() {
                 </div>
               </Accordion>
 
-              {/* Spacer so the form never hides behind tray */}
               <div style={{ height: TRAY_SPACER_HEIGHT }} />
             </div>
 
-            {/* Fixed bottom tray */}
+            {/* Fixed bottom tray (result collapsible) */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
@@ -385,46 +401,70 @@ export default function HomePage() {
               >
                 <div className="max-w-md mx-auto pointer-events-auto">
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
-                    {/* Result */}
+                    {/* Result (collapsible header always visible) */}
                     {zakatResult && (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5">
-                        <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">RESULT</div>
-
-                        {zakatResult.breakdown.nisabRateMissing ? (
-                          <div className="mt-4">
-                            <div className="text-base font-semibold text-slate-900">
-                              Add a {zakatResult.basis} rate to check Nisab
-                            </div>
-                            <div className="mt-2 text-sm text-slate-600">
-                              You can enter assets without metal rates, but we need the selected{" "}
-                              <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-4 flex items-center justify-between gap-4">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+                        <button
+                          type="button"
+                          onClick={() => setResultOpen((v) => !v)}
+                          className="w-full text-left"
+                          aria-expanded={resultOpen}
+                        >
+                          <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="text-sm text-slate-600">
-                                {zakatResult.eligible ? "Zakat to pay" : "Below Nisab"}
+                              <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">
+                                RESULT
                               </div>
-                              <div className="mt-1 text-3xl font-semibold text-emerald-900">
-                                ₹ {formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}
-                              </div>
-                              <div className="mt-2 text-xs text-slate-600">
-                                Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} (
-                                {zakatResult.basis})
+                              <div className="mt-2 text-base font-semibold text-slate-900">{trayHeading}</div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {resultOpen ? "Tap to collapse" : "Tap to expand"}
                               </div>
                             </div>
 
                             <span
-                              className={[
-                                "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold",
-                                zakatResult.eligible
-                                  ? "border-emerald-200 bg-emerald-100 text-emerald-900"
-                                  : "border-slate-200 bg-slate-100 text-slate-700"
-                              ].join(" ")}
+                              className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
+                              aria-hidden="true"
                             >
-                              {zakatResult.eligible ? "Due" : "Not due"}
+                              {resultOpen ? "–" : "+"}
                             </span>
+                          </div>
+                        </button>
+
+                        {/* Expanded details */}
+                        {resultOpen && (
+                          <div className="mt-4">
+                            {zakatResult.breakdown.nisabRateMissing ? (
+                              <div className="text-sm text-slate-600">
+                                You can enter your assets without metal rates, but we need the selected{" "}
+                                <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-4">
+                                <div>
+                                  <div className="text-sm text-slate-600">
+                                    {zakatResult.eligible ? "Zakat to pay" : "Below Nisab"}
+                                  </div>
+                                  <div className="mt-1 text-3xl font-semibold text-emerald-900">
+                                    ₹ {formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}
+                                  </div>
+                                  <div className="mt-2 text-xs text-slate-600">
+                                    Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} (
+                                    {zakatResult.basis})
+                                  </div>
+                                </div>
+
+                                <span
+                                  className={[
+                                    "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold",
+                                    zakatResult.eligible
+                                      ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+                                      : "border-slate-200 bg-slate-100 text-slate-700"
+                                  ].join(" ")}
+                                >
+                                  {zakatResult.eligible ? "Due" : "Not due"}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
