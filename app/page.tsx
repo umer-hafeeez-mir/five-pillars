@@ -1,5 +1,6 @@
 "use client";
 
+import HomePage from "@/components/HomePage";
 import { useEffect, useRef } from "react";
 import PillarTabs from "@/components/PillarTabs";
 import PillarHeader from "@/components/PillarHeader";
