@@ -1,3 +1,5 @@
+import React from "react";
+import hajjHome from "@/components/hajj/hajjHome";
 
 export type PillarKey = "shahada" | "salah" | "zakat" | "sawm" | "hajj";
 
@@ -29,7 +31,8 @@ export const PILLARS: Record<
               أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللهُ وَأَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ اللهِ
             </div>
             <div className="text-sm text-slate-600 italic">
-              “I bear witness that there is no deity but Allah, and I bear witness that Muhammad is the Messenger of Allah.”
+              “I bear witness that there is no deity but Allah, and I bear witness that Muhammad is the Messenger of
+              Allah.”
             </div>
           </div>
         )
@@ -38,8 +41,8 @@ export const PILLARS: Record<
         title: "THE FIRST PILLAR",
         content: (
           <p className="text-sm text-slate-600 leading-relaxed">
-            The Shahada is the foundational declaration of Islamic faith. It affirms the oneness of Allah
-            and the prophethood of Muhammad (peace be upon him).
+            The Shahada is the foundational declaration of Islamic faith. It affirms the oneness of Allah and the
+            prophethood of Muhammad (peace be upon him).
           </p>
         )
       },
@@ -47,8 +50,8 @@ export const PILLARS: Record<
         title: "SIGNIFICANCE",
         content: (
           <p className="text-sm text-slate-600 leading-relaxed">
-            Reciting the Shahada sincerely with understanding and conviction is the first step to entering Islam.
-            It is also reaffirmed in daily worship.
+            Reciting the Shahada sincerely with understanding and conviction is the first step to entering Islam. It is
+            also reaffirmed in daily worship.
           </p>
         )
       }
@@ -144,8 +147,7 @@ export const PILLARS: Record<
         title: "THE FOURTH PILLAR",
         content: (
           <p className="text-sm text-slate-600 leading-relaxed">
-            During Ramadan, Muslims fast from dawn until sunset. Fasting teaches self-discipline, empathy,
-            and gratitude.
+            During Ramadan, Muslims fast from dawn until sunset. Fasting teaches self-discipline, empathy, and gratitude.
           </p>
         )
       },
@@ -153,8 +155,8 @@ export const PILLARS: Record<
         title: "EXEMPTIONS",
         content: (
           <p className="text-sm text-slate-600 leading-relaxed">
-            Those who are ill, traveling, elderly, pregnant, breastfeeding, or menstruating may be exempt.
-            Missed fasts can be made up later or compensated through fidya, depending on circumstances.
+            Those who are ill, traveling, elderly, pregnant, breastfeeding, or menstruating may be exempt. Missed fasts
+            can be made up later or compensated through fidya, depending on circumstances.
           </p>
         )
       }
@@ -169,47 +171,8 @@ export const PILLARS: Record<
     subtitle: "Pilgrimage to Mecca",
     blocks: [
       {
-        title: "RITUALS OF HAJJ",
-        content: (
-          <div className="divide-y divide-slate-200">
-            {[
-              ["1", "Ihram", "Entering the sacred state"],
-              ["2", "Tawaf", "Circling the Kaaba seven times"],
-              ["3", "Sa'i", "Walking between Safa and Marwa"],
-              ["4", "Arafat", "Standing at the plain of Arafat"],
-              ["5", "Muzdalifah", "Collecting pebbles overnight"],
-              ["6", "Rami", "Stoning the pillars at Mina"],
-              ["7", "Eid al-Adha", "Sacrifice and celebration"]
-            ].map(([n, name, desc]) => (
-              <div key={n} className="py-3 flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-xs text-brand-900 font-semibold">
-                  {n}
-                </div>
-                <div>
-                  <div className="text-sm font-medium">{name}</div>
-                  <div className="text-xs text-slate-500">{desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      },
-      {
-        title: "THE FIFTH PILLAR",
-        content: (
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Hajj is required once in a lifetime for every able Muslim who can afford it. It occurs in Dhul Hijjah,
-            the 12th month of the Islamic calendar.
-          </p>
-        )
-      },
-      {
-        title: "UNITY & EQUALITY",
-        content: (
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Pilgrims wear simple white garments (ihram), symbolizing equality before Allah regardless of wealth or status.
-          </p>
-        )
+        title: "HAJJ HOME",
+        content: React.createElement(hajjHome)
       }
     ]
   }
