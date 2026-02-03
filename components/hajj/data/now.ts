@@ -1,49 +1,108 @@
-// components/hajj/sections/NowSection.tsx
-"use client";
+// components/hajj/data/now.ts
 
-import { useEffect } from "react";
-import Card from "@/components/Card";
-import { useMapContext } from "@/lib/mapContext";
-import { HAJJ_SITES } from "@/components/hajj/data/sites";
+export type NowLocation = "Mina" | "Arafat" | "Muzdalifah" | "Haram";
 
-export default function NowSection() {
-  const { setMapConfig, currentLocation } = useMapContext();
+export const NOW_LOCATIONS: NowLocation[] = [
+  "Mina",
+  "Arafat",
+  "Muzdalifah",
+  "Haram"
+];
 
-  useEffect(() => {
-    // Show only the 5 holy sites in Now mode
-    setMapConfig({
-      focus: currentLocation ? { type: "coords", coords: currentLocation, zoom: 13 } : { type: "nearMe", zoom: 13 },
-      pins: HAJJ_SITES.map((s) => ({
-        id: s.id,
-        kind: "site",
-        title: s.title,
-        subtitle: s.hint,
-        coords: s.coords
-      })),
-      overlay: null,
-      legend: [{ label: "Holy site", kind: "site" }]
-    });
-  }, [setMapConfig, currentLocation]);
+export type NowGuide = {
+  title: string;
+  summary?: string;
+  steps: string[];
+  focus: string[];
+  reminders: string[];
+};
 
-  return (
-    <Card title="I’M HERE NOW — WHAT SHOULD I DO?">
-      <div className="text-sm text-slate-600 leading-relaxed space-y-3">
-        <p>
-          Now Mode shows location-specific next steps. For v1, we highlight the five holy sites on the map.
-          Next, we’ll attach action checklists to each site.
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {["Mina", "Arafat", "Muzdalifah", "Haram"].map((x) => (
-            <button
-              key={x}
-              type="button"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition"
-            >
-              {x}
-            </button>
-          ))}
-        </div>
-      </div>
-    </Card>
-  );
-}
+export const NOW_GUIDES: Record<NowLocation, NowGuide> = {
+  Mina: {
+    title: "Mina — What to do right now",
+    summary:
+      "If you’re in Mina, focus on staying organized, praying on time, and preparing for the next movement.",
+    steps: [
+      "Confirm your tent and group location",
+      "Pray on time (shortened, not combined unless instructed)",
+      "Keep water and essentials accessible",
+      "Rest when possible"
+    ],
+    focus: [
+      "Recite Talbiyah frequently",
+      "Stay patient and calm",
+      "Avoid arguments and distractions"
+    ],
+    reminders: [
+      "Keep belongings light and secure",
+      "Follow your group schedule",
+      "Stay hydrated"
+    ]
+  },
+
+  Arafat: {
+    title: "Arafat — What to do right now",
+    summary:
+      "This is the heart of Hajj. Standing in Arafat is mandatory for a valid Hajj.",
+    steps: [
+      "Remain within the boundaries of Arafat",
+      "Pray Dhuhr and Asr (combined/shortened per guidance)",
+      "Spend time in dua and remembrance",
+      "Avoid unnecessary movement"
+    ],
+    focus: [
+      "Make sincere personal duas",
+      "Seek forgiveness and mercy",
+      "Stay present and focused"
+    ],
+    reminders: [
+      "You do NOT need to be on Jabal al-Rahmah",
+      "Do not leave before sunset",
+      "Protect yourself from heat"
+    ]
+  },
+
+  Muzdalifah: {
+    title: "Muzdalifah — What to do right now",
+    summary:
+      "After sunset, rest here briefly and prepare for the next day’s rituals.",
+    steps: [
+      "Pray Maghrib and Isha together",
+      "Rest or sleep if possible",
+      "Collect pebbles if safe",
+      "Pray Fajr and make brief dua"
+    ],
+    focus: [
+      "Prioritize safety",
+      "Follow group guidance",
+      "Conserve energy"
+    ],
+    reminders: [
+      "Even a short stay is sufficient",
+      "Avoid risky areas",
+      "Keep warm at night"
+    ]
+  },
+
+  Haram: {
+    title: "Masjid al-Haram — What to do right now",
+    summary:
+      "Move calmly and stay focused on your rituals.",
+    steps: [
+      "Choose less crowded routes",
+      "Keep your group meeting point in mind",
+      "If doing Tawaf, avoid pushing",
+      "If doing Sa’i, pace yourself"
+    ],
+    focus: [
+      "Maintain khushu’ (presence)",
+      "Be gentle with others",
+      "Avoid distractions"
+    ],
+    reminders: [
+      "Use upper levels if ground floor is crowded",
+      "Keep phone charged",
+      "Carry water"
+    ]
+  }
+};
