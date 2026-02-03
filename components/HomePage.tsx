@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { PILLARS, PILLARS_ORDER, PillarKey } from "@/lib/pillars";
+import { PILLARS, PILLARS_ORDER, type PillarKey } from "@/lib/pillars";
 import {
   HeartIcon,
   ClockIcon,
@@ -9,6 +9,11 @@ import {
   CrescentIcon,
   PinIcon
 } from "@/components/Icons";
+
+type HomePageProps = {
+  onExplore: () => void;
+  onSelectPillar: (k: PillarKey) => void;
+};
 
 function PillarIcon({ name }: { name: string }) {
   const cls = "w-6 h-6";
@@ -30,17 +35,12 @@ function PillarIcon({ name }: { name: string }) {
 
 function PillarCard({
   k,
-  onOpen,
-  showAvailable = true
+  onOpen
 }: {
   k: PillarKey;
   onOpen: (k: PillarKey) => void;
-  showAvailable?: boolean;
 }) {
   const p = PILLARS[k];
-
-  // You can later replace this with real feature flags
-  const isAvailable = true;
 
   return (
     <button
@@ -53,13 +53,11 @@ function PillarCard({
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
       ].join(" ")}
     >
-      {showAvailable && isAvailable && (
-        <div className="absolute right-4 top-4">
-          <span className="text-[11px] font-semibold px-2 py-1 rounded-full bg-brand-50 border border-brand-100 text-brand-900">
-            Available
-          </span>
-        </div>
-      )}
+      <div className="absolute right-4 top-4">
+        <span className="text-[11px] font-semibold px-2 py-1 rounded-full bg-brand-50 border border-brand-100 text-brand-900">
+          Available
+        </span>
+      </div>
 
       <div className="w-12 h-12 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
         <PillarIcon name={p.icon} />
@@ -68,27 +66,21 @@ function PillarCard({
       <div className="mt-4">
         <div className="text-lg font-semibold text-slate-900">{p.tab}</div>
         <div className="text-sm text-slate-500">{p.tabHint}</div>
-
         <div className="mt-3 text-sm text-slate-600 leading-relaxed">
           {p.subtitle}
         </div>
       </div>
 
       <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-900">
-        Open
-        <span className="transition-transform group-hover:translate-x-0.5">→</span>
+        Open <span className="transition-transform group-hover:translate-x-0.5">→</span>
       </div>
     </button>
   );
 }
 
-export default function HomePage({
-  onExplore,
-  onSelectPillar
-}: {
-  onExplore: () => void;
-  onSelectPillar: (k: PillarKey) => void;
-}) {
+export default function HomePage(props: HomePageProps) {
+  const { onExplore, onSelectPillar } = props;
+
   return (
     <section className="relative">
       {/* subtle background */}
@@ -99,6 +91,7 @@ export default function HomePage({
           <h1 className="text-3xl sm:text-4xl font-semibold">
             The Five Pillars of Islam
           </h1>
+
           <p className="mt-3 text-sm sm:text-base text-slate-500">
             Simple, trustworthy tools to help you practice with clarity and intention.
           </p>
@@ -128,7 +121,6 @@ export default function HomePage({
           ))}
         </div>
 
-        {/* Start here */}
         <div className="mt-10 max-w-3xl mx-auto rounded-2xl border border-slate-200 bg-white soft-shadow p-6">
           <div className="text-center">
             <div className="text-xl font-semibold">Not sure where to begin?</div>
@@ -155,5 +147,35 @@ export default function HomePage({
           <ul className="mt-6 space-y-2 text-sm text-slate-600">
             <li className="flex gap-2">
               <span className="text-brand-900 font-semibold">•</span>
-              Based on widely accepted Islamic principl
+              Based on widely accepted Islamic principles
+            </li>
+            <li className="flex gap-2">
+              <span className="text-brand-900 font-semibold">•</span>
+              Transparent explanations alongside tools
+            </li>
+            <li className="flex gap-2">
+              <span className="text-brand-900 font-semibold">•</span>
+              Educational support, not religious verdicts
+            </li>
+            <li className="flex gap-2">
+              <span className="text-brand-900 font-semibold">•</span>
+              No ads. No tracking. No pressure
+            </li>
+          </ul>
+        </div>
 
+        <div className="mt-10 text-center text-slate-600">
+          <div className="italic">“Islam is built upon five pillars…”</div>
+          <div className="mt-2 text-sm text-slate-500">— Sahih al-Bukhari & Muslim</div>
+        </div>
+
+        <footer className="mt-10 flex flex-wrap gap-x-6 gap-y-2 justify-center text-sm text-slate-500">
+          <button className="hover:text-slate-700 transition">About</button>
+          <button className="hover:text-slate-700 transition">Sources & methodology</button>
+          <button className="hover:text-slate-700 transition">Privacy</button>
+          <button className="hover:text-slate-700 transition">Feedback</button>
+        </footer>
+      </div>
+    </section>
+  );
+}
