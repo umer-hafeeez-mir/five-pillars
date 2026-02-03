@@ -8,7 +8,7 @@ import Field from "@/components/Field";
 import Accordion from "@/components/Accordion";
 import usePersistedState from "@/lib/usePersistedState";
 import { PILLARS, PillarKey } from "@/lib/pillars";
-import { calculateZakat, ZakatForm } from "@/lib/zakat";
+import { calculateZakat, ZakatForm, GoldKarat, GoldHoldings } from "@/lib/zakat";
 
 function formatINR(n: number) {
   try {
@@ -72,7 +72,6 @@ function CollapsibleCard({
             <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
           </div>
 
-          {/* ✅ More “clickable” affordance: hover/active tint + subtle scale */}
           <span
             className={[
               "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
@@ -93,6 +92,15 @@ function CollapsibleCard({
   );
 }
 
+function defaultGoldHoldings(): GoldHoldings {
+  return {
+    "24k": { grams: "", rate: "" },
+    "22k": { grams: "", rate: "" },
+    "18k": { grams: "", rate: "" },
+    custom: { grams: "", rate: "", purityPct: "" }
+  };
+}
+
 export default function HomePage() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
@@ -100,9 +108,12 @@ export default function HomePage() {
     cash: "",
     bank: "",
 
+    goldHoldings: defaultGoldHoldings(),
+    goldKarat: "24k",
+
+    // legacy fields optional – kept for backward compat (safe)
     goldGrams: "",
     goldRate: "",
-    goldKarat: "24k",
     goldCustomPurity: "",
 
     silverGrams: "",
@@ -122,10 +133,8 @@ export default function HomePage() {
     null
   );
 
-  // ✅ Result card collapsed by default (persisted)
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
 
-  // ✅ Only one section open at a time (persisted). Default: Nisab open.
   const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
     "fp_zakat_open_section_v2",
     "nisab"
@@ -164,9 +173,11 @@ export default function HomePage() {
       cash: "",
       bank: "",
 
+      goldHoldings: defaultGoldHoldings(),
+      goldKarat: "24k",
+
       goldGrams: "",
       goldRate: "",
-      goldKarat: "24k",
       goldCustomPurity: "",
 
       silverGrams: "",
@@ -239,11 +250,19 @@ export default function HomePage() {
       const mockGold = 14413.5;
       const mockSilver = 165.25;
 
+      // keep behavior: fill nisab-basis rate into the most relevant bucket
       if (z.nisabBasis === "gold") {
-        setZ((s) => ({ ...s, goldRate: mockGold }));
+        setZ((s) => ({
+          ...s,
+          goldHoldings: {
+            ...(s.goldHoldings ?? defaultGoldHoldings()),
+            "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: mockGold }
+          }
+        }));
       } else {
         setZ((s) => ({ ...s, silverRate: mockSilver }));
       }
+
       setLastFetchedAt(Date.now());
     } catch {
       alert("Could not fetch rates. You can still enter the rate manually.");
@@ -251,7 +270,10 @@ export default function HomePage() {
   };
 
   const basis = z.nisabBasis;
-  const manualRateValue = basis === "gold" ? z.goldRate : z.silverRate;
+
+  // Manual rate field depends on selected basis
+  // For gold basis: use 24k rate field (pure gold reference)
+  const manualRateValue = basis === "gold" ? (z.goldHoldings?.["24k"]?.rate ?? "") : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
 
   const estimatedNisab =
@@ -266,17 +288,13 @@ export default function HomePage() {
   // Totals for subtitles
   const cashTotal = n(z.cash) + n(z.bank);
 
-  const karat = String(z.goldKarat || "24k").toLowerCase();
-  const purityFactor =
-    karat === "24k"
-      ? 1
-      : karat === "22k"
-      ? 22 / 24
-      : karat === "18k"
-      ? 18 / 24
-      : Math.max(0, Math.min(1, n(z.goldCustomPurity) / 100));
+  const h = z.goldHoldings ?? defaultGoldHoldings();
+  const goldValueApprox =
+    n(h["24k"].grams) * n(h["24k"].rate) * 1.0 +
+    n(h["22k"].grams) * n(h["22k"].rate) * 0.916 +
+    n(h["18k"].grams) * n(h["18k"].rate) * 0.75 +
+    n(h.custom.grams) * n(h.custom.rate) * Math.max(0, Math.min(1, n(h.custom.purityPct) / 100));
 
-  const goldValueApprox = n(z.goldGrams) * n(z.goldRate) * purityFactor;
   const silverValueApprox = n(z.silverGrams) * n(z.silverRate);
   const metalsTotal = goldValueApprox + silverValueApprox;
 
@@ -294,18 +312,58 @@ export default function HomePage() {
   const metalsSubtitle =
     metalsTotal > 0
       ? `₹ ${formatINR(metalsTotal)}`
-      : n(z.goldGrams) > 0 ||
-        n(z.silverGrams) > 0 ||
-        n(z.goldRate) > 0 ||
+      : goldValueApprox > 0 ||
+        silverValueApprox > 0 ||
+        n(h["24k"].rate) > 0 ||
+        n(h["22k"].rate) > 0 ||
+        n(h["18k"].rate) > 0 ||
+        n(h.custom.rate) > 0 ||
         n(z.silverRate) > 0
       ? "Entered"
       : "Not entered";
+
   const otherSubtitle = otherTotal > 0 ? `₹ ${formatINR(otherTotal)}` : "Not entered";
   const deductionsSubtitle = debtsTotal > 0 ? `₹ ${formatINR(debtsTotal)}` : "None";
 
   const toggleSection = (section: Exclude<ZakatSection, null>) => {
     setOpenSection((curr) => (curr === section ? null : section));
   };
+
+  // ✅ helpers for gold holdings UI
+  const activeKarat: GoldKarat = (z.goldKarat ?? "24k") as GoldKarat;
+
+  const setActiveKarat = (k: GoldKarat) => {
+    setZ((s: any) => ({ ...s, goldKarat: k }));
+  };
+
+  const updateHolding = (k: GoldKarat, patch: Partial<any>) => {
+    setZ((s: any) => {
+      const curr = (s.goldHoldings ?? defaultGoldHoldings()) as GoldHoldings;
+
+      if (k === "custom") {
+        return {
+          ...s,
+          goldHoldings: {
+            ...curr,
+            custom: { ...curr.custom, ...patch }
+          }
+        };
+      }
+
+      return {
+        ...s,
+        goldHoldings: {
+          ...curr,
+          [k]: { ...(curr as any)[k], ...patch }
+        }
+      };
+    });
+  };
+
+  const activeHolding =
+    activeKarat === "custom"
+      ? (z.goldHoldings?.custom ?? { grams: "", rate: "", purityPct: "" })
+      : ((z.goldHoldings as any)?.[activeKarat] ?? { grams: "", rate: "" });
 
   return (
     <main className="min-h-screen">
@@ -388,8 +446,21 @@ export default function HomePage() {
                         prefix="₹"
                         value={manualRateValue}
                         onChange={(v) => {
-                          if (basis === "gold") setZ((s: any) => ({ ...s, goldRate: v }));
-                          else setZ((s: any) => ({ ...s, silverRate: v }));
+                          if (basis === "gold") {
+                            // store gold nisab reference as 24k rate
+                            setZ((s: any) => ({
+                              ...s,
+                              goldHoldings: {
+                                ...(s.goldHoldings ?? defaultGoldHoldings()),
+                                "24k": {
+                                  ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }),
+                                  rate: v
+                                }
+                              }
+                            }));
+                          } else {
+                            setZ((s: any) => ({ ...s, silverRate: v }));
+                          }
                         }}
                       />
                     </div>
@@ -451,6 +522,7 @@ export default function HomePage() {
                 onToggle={() => toggleSection("metals")}
               >
                 <div className="space-y-3">
+                  {/* ✅ GOLD HOLDINGS: selector stays constant, fields below swap per selection */}
                   <div>
                     <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
 
@@ -459,10 +531,10 @@ export default function HomePage() {
                         <button
                           key={k}
                           type="button"
-                          onClick={() => setZ((s: any) => ({ ...s, goldKarat: k }))}
+                          onClick={() => setActiveKarat(k)}
                           className={[
                             "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                            String(z.goldKarat || "24k").toLowerCase() === k
+                            String(activeKarat).toLowerCase() === k
                               ? "border-emerald-300 bg-emerald-50 text-emerald-900"
                               : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                           ].join(" ")}
@@ -472,39 +544,54 @@ export default function HomePage() {
                       ))}
                     </div>
 
-                    {String(z.goldKarat || "24k").toLowerCase() === "custom" && (
+                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                      Add grams & rate per purity. We’ll total everything. Nisab always uses pure gold/silver.
+                    </p>
+                  </div>
+
+                  {/* ✅ Dynamic panel for the selected purity */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-xs font-semibold tracking-wide text-slate-500">
+                      {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
+                    </div>
+
+                    {activeKarat === "custom" && (
                       <div className="mt-3">
                         <Field
                           label="Custom purity (%)"
                           hint="Example: 91.6 for 22k, 75 for 18k"
                           suffix="%"
-                          value={z.goldCustomPurity}
-                          onChange={(v) => setZ((s: any) => ({ ...s, goldCustomPurity: v }))}
+                          value={(activeHolding as any).purityPct ?? ""}
+                          onChange={(v) => updateHolding("custom", { purityPct: v })}
                         />
                       </div>
                     )}
 
-                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                      Jewellery value is adjusted by purity (e.g., 18k = 75%). Nisab always uses pure gold/silver.
-                    </p>
+                    <div className="mt-3 space-y-3">
+                      <Field
+                        label="Gold (grams)"
+                        hint="Weight of gold you own for this purity."
+                        suffix="g"
+                        value={(activeHolding as any).grams ?? ""}
+                        onChange={(v) => updateHolding(activeKarat, { grams: v })}
+                      />
+
+                      <Field
+                        label="Gold rate (₹/g)"
+                        hint="Current market price per gram for this purity."
+                        prefix="₹"
+                        value={(activeHolding as any).rate ?? ""}
+                        onChange={(v) => updateHolding(activeKarat, { rate: v })}
+                      />
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      Tip: If you only know 22k/18k rate, that’s okay — we’ll derive a pure-gold rate for Nisab when
+                      needed.
+                    </div>
                   </div>
 
-                  <Field
-                    label="Gold (grams)"
-                    hint="Weight of gold you own."
-                    suffix="g"
-                    value={z.goldGrams}
-                    onChange={(v) => setZ((s: any) => ({ ...s, goldGrams: v }))}
-                  />
-
-                  <Field
-                    label="Gold rate (₹/g)"
-                    hint="Current market price per gram."
-                    prefix="₹"
-                    value={z.goldRate}
-                    onChange={(v) => setZ((s: any) => ({ ...s, goldRate: v }))}
-                  />
-
+                  {/* Silver stays simple */}
                   <Field
                     label="Silver (grams)"
                     hint="Weight of silver you own."
@@ -636,7 +723,7 @@ export default function HomePage() {
                           <div className="mt-4">
                             {zakatResult.breakdown.nisabRateMissing ? (
                               <div className="text-sm text-slate-600">
-                                You can enter your assets without metal rates, but we need the selected{" "}
+                                You can enter your assets without metal rates, but we need a valid{" "}
                                 <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
                               </div>
                             ) : (
