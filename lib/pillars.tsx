@@ -171,7 +171,7 @@ export const PILLARS: Record<
     blocks: [
       {
         title: "HAJJ GUIDE",
-        content: <HajjHome />
+        content: <hajjHome />
       }
     ]
   }
