@@ -31,7 +31,8 @@ export const PILLARS: Record<
               أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللهُ وَأَشْهَدُ أَنَّ مُحَمَّدًا رَسُولُ اللهِ
             </div>
             <div className="text-sm text-slate-600 italic">
-              “I bear witness that there is no deity but Allah, and I bear witness that Muhammad is the Messenger of Allah.”
+              “I bear witness that there is no deity but Allah, and I bear witness that Muhammad is the Messenger of
+              Allah.”
             </div>
           </div>
         )
@@ -170,8 +171,8 @@ export const PILLARS: Record<
     subtitle: "Pilgrimage to Mecca",
     blocks: [
       {
-        title: "HAJJ GUIDE",
-        content: <hajjHome />
+        title: "HAJJ HOME",
+        content: React.createElement(hajjHome)
       }
     ]
   }
