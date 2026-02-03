@@ -102,7 +102,8 @@ function defaultGoldHoldings(): GoldHoldings {
   };
 }
 
-export default function HomePage() {
+// ✅ Renamed to avoid conflict with imported HomePage component
+export default function Page() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
   const [z, setZ] = usePersistedState<ZakatForm>("fp_zakat_form_v3", {
@@ -143,8 +144,9 @@ export default function HomePage() {
 
   const prevEligibleRef = useRef<boolean>(false);
   const prevActiveRef = useRef<PillarKey>(active);
-  const tabsRef = useRef<HTMLDivElement | null>(null);
 
+  // ✅ Used by homepage "Explore" + card clicks to scroll into tabs
+  const tabsRef = useRef<HTMLDivElement | null>(null);
 
   const pillar = PILLARS[active];
   const zakatResult = active === "zakat" ? calculateZakat(z) : null;
@@ -370,429 +372,441 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen">
-      <header className="container-page pt-10 pb-4 text-center">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
+      {/* ✅ NEW: Homepage section that drives users into the existing tabs flow */}
+      <HomePage
+        onExplore={() => {
+          tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+        onSelectPillar={(k) => {
+          setActive(k);
+          tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
 
-        <div className="mt-6">
-          <PillarTabs active={active} onChange={setActive} />
-        </div>
-      </header>
+      {/* ✅ Wrap existing pillar UI so homepage can scroll here */}
+      <div ref={tabsRef}>
+        <header className="container-page pt-10 pb-4 text-center">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
 
-      <section className="container-page pb-16">
-        <PillarHeader
-          title={active === "zakat" ? "Calculate Zakat" : pillar.title}
-          subtitle={pillar.subtitle}
-          icon={pillar.icon}
-          hideIcon={active === "zakat"}
-        />
-
-        {active !== "zakat" ? (
-          <div className="mt-6 space-y-5">
-            {pillar.blocks.map((b, idx) => (
-              <Card key={idx} title={b.title}>
-                {b.content}
-              </Card>
-            ))}
+          <div className="mt-6">
+            <PillarTabs active={active} onChange={setActive} />
           </div>
-        ) : (
-          <>
-            <div className="mt-6 space-y-4">
-              <CollapsibleCard
-                title="Nisab Eligibility"
-                subtitle={nisabSubtitle}
-                open={openSection === "nisab"}
-                onToggle={() => toggleSection("nisab")}
-              >
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
+        </header>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setZ((s) => ({ ...s, nisabBasis: "silver" }))}
-                      className={[
-                        "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                        z.nisabBasis === "silver"
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                          : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                      ].join(" ")}
-                    >
-                      Silver (612.36g)
-                    </button>
+        <section className="container-page pb-16">
+          <PillarHeader
+            title={active === "zakat" ? "Calculate Zakat" : pillar.title}
+            subtitle={pillar.subtitle}
+            icon={pillar.icon}
+            hideIcon={active === "zakat"}
+          />
 
-                    <button
-                      type="button"
-                      onClick={() => setZ((s) => ({ ...s, nisabBasis: "gold" }))}
-                      className={[
-                        "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                        z.nisabBasis === "gold"
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                          : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                      ].join(" ")}
-                    >
-                      Gold (87.48g)
-                    </button>
-                  </div>
+          {active !== "zakat" ? (
+            <div className="mt-6 space-y-5">
+              {pillar.blocks.map((b, idx) => (
+                <Card key={idx} title={b.title}>
+                  {b.content}
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="mt-6 space-y-4">
+                <CollapsibleCard
+                  title="Nisab Eligibility"
+                  subtitle={nisabSubtitle}
+                  open={openSection === "nisab"}
+                  onToggle={() => toggleSection("nisab")}
+                >
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
 
-                  <p className="mt-3 text-xs leading-relaxed text-slate-600">
-                    Nisab is the minimum wealth threshold used to decide whether Zakat is due. It is compared against
-                    your <b>total net assets</b> (not just metals).
-                  </p>
-
-                  <div className="mt-4">
-                    <div className="text-sm font-semibold text-slate-900">
-                      {manualRateLabel} <span className="text-slate-500">(manual)</span>
-                    </div>
-                    <div className="mt-2">
-                      <Field
-                        label=""
-                        prefix="₹"
-                        value={manualRateValue}
-                        onChange={(v) => {
-                          if (basis === "gold") {
-                            // store gold nisab reference as 24k rate
-                            setZ((s: any) => ({
-                              ...s,
-                              goldHoldings: {
-                                ...(s.goldHoldings ?? defaultGoldHoldings()),
-                                "24k": {
-                                  ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }),
-                                  rate: v
-                                }
-                              }
-                            }));
-                          } else {
-                            setZ((s: any) => ({ ...s, silverRate: v }));
-                          }
-                        }}
-                      />
-                    </div>
-
-                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                      <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
-                      <span className="font-semibold">{estimatedNisab}</span>{" "}
-                      <span className="text-slate-500">
-                        (based on {basis === "gold" ? "87.48g gold" : "612.36g silver"} × your rate)
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="text-xs text-slate-500">
-                        Last updated:{" "}
-                        <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
-                      </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setZ((s) => ({ ...s, nisabBasis: "silver" }))}
+                        className={[
+                          "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                          z.nisabBasis === "silver"
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                        ].join(" ")}
+                      >
+                        Silver (612.36g)
+                      </button>
 
                       <button
                         type="button"
-                        onClick={handleFetchOnline}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                        onClick={() => setZ((s) => ({ ...s, nisabBasis: "gold" }))}
+                        className={[
+                          "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                          z.nisabBasis === "gold"
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                        ].join(" ")}
                       >
-                        Fetch online (optional)
+                        Gold (87.48g)
                       </button>
                     </div>
-                  </div>
-                </div>
-              </CollapsibleCard>
 
-              <CollapsibleCard
-                title="Cash & Savings"
-                subtitle={cashSubtitle}
-                open={openSection === "cash"}
-                onToggle={() => toggleSection("cash")}
-              >
-                <div className="space-y-3">
-                  <Field
-                    label="Cash in hand"
-                    hint="Money you have right now."
-                    prefix="₹"
-                    value={z.cash}
-                    onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
-                  />
-                  <Field
-                    label="Cash in bank"
-                    hint="Your current bank balance."
-                    prefix="₹"
-                    value={z.bank}
-                    onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
-                  />
-                </div>
-              </CollapsibleCard>
-
-              <CollapsibleCard
-                title="Precious Metals"
-                subtitle={metalsSubtitle}
-                open={openSection === "metals"}
-                onToggle={() => toggleSection("metals")}
-              >
-                <div className="space-y-3">
-                  {/* ✅ GOLD HOLDINGS: selector stays constant, fields below swap per selection */}
-                  <div>
-                    <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
-
-                    <div className="mt-2 grid grid-cols-4 gap-2">
-                      {(["24k", "22k", "18k", "custom"] as const).map((k) => (
-                        <button
-                          key={k}
-                          type="button"
-                          onClick={() => setActiveKarat(k)}
-                          className={[
-                            "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                            String(activeKarat).toLowerCase() === k
-                              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                              : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                          ].join(" ")}
-                        >
-                          {k === "custom" ? "Custom" : k.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-
-                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                      Add grams & rate per purity. We’ll total everything. Nisab always uses pure gold/silver.
+                    <p className="mt-3 text-xs leading-relaxed text-slate-600">
+                      Nisab is the minimum wealth threshold used to decide whether Zakat is due. It is compared against
+                      your <b>total net assets</b> (not just metals).
                     </p>
-                  </div>
 
-                  {/* ✅ Dynamic panel for the selected purity */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                    <div className="text-xs font-semibold tracking-wide text-slate-500">
-                      {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
-                    </div>
-
-                    {activeKarat === "custom" && (
-                      <div className="mt-3">
+                    <div className="mt-4">
+                      <div className="text-sm font-semibold text-slate-900">
+                        {manualRateLabel} <span className="text-slate-500">(manual)</span>
+                      </div>
+                      <div className="mt-2">
                         <Field
-                          label="Custom purity (%)"
-                          hint="Example: 91.6 for 22k, 75 for 18k"
-                          suffix="%"
-                          value={(activeHolding as any).purityPct ?? ""}
-                          onChange={(v) => updateHolding("custom", { purityPct: v })}
+                          label=""
+                          prefix="₹"
+                          value={manualRateValue}
+                          onChange={(v) => {
+                            if (basis === "gold") {
+                              // store gold nisab reference as 24k rate
+                              setZ((s: any) => ({
+                                ...s,
+                                goldHoldings: {
+                                  ...(s.goldHoldings ?? defaultGoldHoldings()),
+                                  "24k": {
+                                    ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }),
+                                    rate: v
+                                  }
+                                }
+                              }));
+                            } else {
+                              setZ((s: any) => ({ ...s, silverRate: v }));
+                            }
+                          }}
                         />
                       </div>
-                    )}
 
-                    <div className="mt-3 space-y-3">
-                      <Field
-                        label="Gold (grams)"
-                        hint="Weight of gold you own for this purity."
-                        suffix="g"
-                        value={(activeHolding as any).grams ?? ""}
-                        onChange={(v) => updateHolding(activeKarat, { grams: v })}
-                      />
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                        <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
+                        <span className="font-semibold">{estimatedNisab}</span>{" "}
+                        <span className="text-slate-500">
+                          (based on {basis === "gold" ? "87.48g gold" : "612.36g silver"} × your rate)
+                        </span>
+                      </div>
 
-                      <Field
-                        label="Gold rate (₹/g)"
-                        hint="Current market price per gram for this purity."
-                        prefix="₹"
-                        value={(activeHolding as any).rate ?? ""}
-                        onChange={(v) => updateHolding(activeKarat, { rate: v })}
-                      />
-                    </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <div className="text-xs text-slate-500">
+                          Last updated:{" "}
+                          <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
+                        </div>
 
-                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                      Tip: If you only know 22k/18k rate, that’s okay — we’ll derive a pure-gold rate for Nisab when
-                      needed.
-                    </div>
-                  </div>
-
-                  {/* Silver stays simple */}
-                  <Field
-                    label="Silver (grams)"
-                    hint="Weight of silver you own."
-                    suffix="g"
-                    value={z.silverGrams}
-                    onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
-                  />
-
-                  <Field
-                    label="Silver rate (₹/g)"
-                    hint="Current market price per gram."
-                    prefix="₹"
-                    value={z.silverRate}
-                    onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
-                  />
-                </div>
-              </CollapsibleCard>
-
-              <CollapsibleCard
-                title="Other Assets"
-                subtitle={otherSubtitle}
-                open={openSection === "other"}
-                onToggle={() => toggleSection("other")}
-              >
-                <div className="space-y-3">
-                  <Field
-                    label="Investments / savings"
-                    hint="Stocks, mutual funds, savings plans, etc."
-                    prefix="₹"
-                    value={z.investments}
-                    onChange={(v) => setZ((s: any) => ({ ...s, investments: v }))}
-                  />
-                  <Field
-                    label="Business assets"
-                    hint="Goods held for sale, business cash, receivables."
-                    prefix="₹"
-                    value={z.businessAssets}
-                    onChange={(v) => setZ((s: any) => ({ ...s, businessAssets: v }))}
-                  />
-                  <Field
-                    label="Money lent to others"
-                    hint="Money you expect to receive back."
-                    prefix="₹"
-                    value={z.moneyLent}
-                    onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
-                  />
-                </div>
-              </CollapsibleCard>
-
-              <CollapsibleCard
-                title="Deductions"
-                subtitle={deductionsSubtitle}
-                open={openSection === "deductions"}
-                onToggle={() => toggleSection("deductions")}
-              >
-                <div className="space-y-3">
-                  <Field
-                    label="Debts & liabilities"
-                    hint="Bills or loans you must repay soon."
-                    prefix="₹"
-                    value={z.debts}
-                    onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
-                  />
-                </div>
-              </CollapsibleCard>
-
-              <Accordion title="How Zakat is calculated">
-                <div className="text-sm text-slate-600 leading-relaxed space-y-2">
-                  <p>
-                    Zakat is estimated at <b>2.5%</b> of your <b>net zakatable wealth</b>.
-                  </p>
-                  <p className="text-sm">
-                    <b>Net</b> = (Cash + Bank + Gold value + Silver value + Investments + Business assets + Money lent) −
-                    Debts
-                  </p>
-                  <p>
-                    Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver rate).
-                  </p>
-                </div>
-              </Accordion>
-
-              <div style={{ height: TRAY_SPACER_HEIGHT }} />
-            </div>
-
-            <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
-              <div
-                className="container-page pb-4"
-                style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
-              >
-                <div className="max-w-md mx-auto pointer-events-auto">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
-                    {zakatResult && (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
                         <button
                           type="button"
-                          onClick={() => {
-                            setResultOpen((v) => {
-                              const next = !v;
-                              if (next && zakatResult?.breakdown?.nisabRateMissing) {
-                                setOpenSection("metals");
-                              }
-                              return next;
-                            });
-                          }}
-                          className="w-full text-left"
-                          aria-expanded={resultOpen}
+                          onClick={handleFetchOnline}
+                          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">
-                                RESULT
-                              </div>
-                              <div className="mt-2 text-base font-semibold text-slate-900">{trayHeading}</div>
-                              <div className="mt-1 text-xs text-slate-500">
-                                {resultOpen ? "Tap to collapse" : "Tap to expand"}
-                              </div>
-                            </div>
-
-                            <span
-                              className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
-                              aria-hidden="true"
-                            >
-                              {resultOpen ? "–" : "+"}
-                            </span>
-                          </div>
+                          Fetch online (optional)
                         </button>
-
-                        {resultOpen && (
-                          <div className="mt-4">
-                            {zakatResult.breakdown.nisabRateMissing ? (
-                              <div className="text-sm text-slate-600">
-                                You can enter your assets without metal rates, but we need a valid{" "}
-                                <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between gap-4">
-                                <div>
-                                  <div className="text-sm text-slate-600">
-                                    {zakatResult.eligible ? "Zakat to pay" : "Below Nisab"}
-                                  </div>
-                                  <div className="mt-1 text-3xl font-semibold text-emerald-900">
-                                    ₹ {formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}
-                                  </div>
-                                  <div className="mt-2 text-xs text-slate-600">
-                                    Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} (
-                                    {zakatResult.basis})
-                                  </div>
-                                </div>
-
-                                <span
-                                  className={[
-                                    "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold",
-                                    zakatResult.eligible
-                                      ? "border-emerald-200 bg-emerald-100 text-emerald-900"
-                                      : "border-slate-200 bg-slate-100 text-slate-700"
-                                  ].join(" ")}
-                                >
-                                  {zakatResult.eligible ? "Due" : "Not due"}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
-                    )}
+                    </div>
+                  </div>
+                </CollapsibleCard>
 
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={handleDownloadPDF}
-                        className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-3 font-semibold soft-shadow transition"
-                      >
-                        Download PDF
-                      </button>
+                <CollapsibleCard
+                  title="Cash & Savings"
+                  subtitle={cashSubtitle}
+                  open={openSection === "cash"}
+                  onToggle={() => toggleSection("cash")}
+                >
+                  <div className="space-y-3">
+                    <Field
+                      label="Cash in hand"
+                      hint="Money you have right now."
+                      prefix="₹"
+                      value={z.cash}
+                      onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
+                    />
+                    <Field
+                      label="Cash in bank"
+                      hint="Your current bank balance."
+                      prefix="₹"
+                      value={z.bank}
+                      onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
+                    />
+                  </div>
+                </CollapsibleCard>
 
-                      <button
-                        type="button"
-                        onClick={handleShare}
-                        className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
-                      >
-                        Share
-                      </button>
+                <CollapsibleCard
+                  title="Precious Metals"
+                  subtitle={metalsSubtitle}
+                  open={openSection === "metals"}
+                  onToggle={() => toggleSection("metals")}
+                >
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
+
+                      <div className="mt-2 grid grid-cols-4 gap-2">
+                        {(["24k", "22k", "18k", "custom"] as const).map((k) => (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => setActiveKarat(k)}
+                            className={[
+                              "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                              String(activeKarat).toLowerCase() === k
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                            ].join(" ")}
+                          >
+                            {k === "custom" ? "Custom" : k.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+
+                      <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                        Add grams & rate per purity. We’ll total everything. Nisab always uses pure gold/silver.
+                      </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="mt-3 w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 text-sm font-semibold transition"
-                    >
-                      Reset
-                    </button>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="text-xs font-semibold tracking-wide text-slate-500">
+                        {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
+                      </div>
+
+                      {activeKarat === "custom" && (
+                        <div className="mt-3">
+                          <Field
+                            label="Custom purity (%)"
+                            hint="Example: 91.6 for 22k, 75 for 18k"
+                            suffix="%"
+                            value={(activeHolding as any).purityPct ?? ""}
+                            onChange={(v) => updateHolding("custom", { purityPct: v })}
+                          />
+                        </div>
+                      )}
+
+                      <div className="mt-3 space-y-3">
+                        <Field
+                          label="Gold (grams)"
+                          hint="Weight of gold you own for this purity."
+                          suffix="g"
+                          value={(activeHolding as any).grams ?? ""}
+                          onChange={(v) => updateHolding(activeKarat, { grams: v })}
+                        />
+
+                        <Field
+                          label="Gold rate (₹/g)"
+                          hint="Current market price per gram for this purity."
+                          prefix="₹"
+                          value={(activeHolding as any).rate ?? ""}
+                          onChange={(v) => updateHolding(activeKarat, { rate: v })}
+                        />
+                      </div>
+
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        Tip: If you only know 22k/18k rate, that’s okay — we’ll derive a pure-gold rate for Nisab when
+                        needed.
+                      </div>
+                    </div>
+
+                    <Field
+                      label="Silver (grams)"
+                      hint="Weight of silver you own."
+                      suffix="g"
+                      value={z.silverGrams}
+                      onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
+                    />
+
+                    <Field
+                      label="Silver rate (₹/g)"
+                      hint="Current market price per gram."
+                      prefix="₹"
+                      value={z.silverRate}
+                      onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
+                    />
+                  </div>
+                </CollapsibleCard>
+
+                <CollapsibleCard
+                  title="Other Assets"
+                  subtitle={otherSubtitle}
+                  open={openSection === "other"}
+                  onToggle={() => toggleSection("other")}
+                >
+                  <div className="space-y-3">
+                    <Field
+                      label="Investments / savings"
+                      hint="Stocks, mutual funds, savings plans, etc."
+                      prefix="₹"
+                      value={z.investments}
+                      onChange={(v) => setZ((s: any) => ({ ...s, investments: v }))}
+                    />
+                    <Field
+                      label="Business assets"
+                      hint="Goods held for sale, business cash, receivables."
+                      prefix="₹"
+                      value={z.businessAssets}
+                      onChange={(v) => setZ((s: any) => ({ ...s, businessAssets: v }))}
+                    />
+                    <Field
+                      label="Money lent to others"
+                      hint="Money you expect to receive back."
+                      prefix="₹"
+                      value={z.moneyLent}
+                      onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
+                    />
+                  </div>
+                </CollapsibleCard>
+
+                <CollapsibleCard
+                  title="Deductions"
+                  subtitle={deductionsSubtitle}
+                  open={openSection === "deductions"}
+                  onToggle={() => toggleSection("deductions")}
+                >
+                  <div className="space-y-3">
+                    <Field
+                      label="Debts & liabilities"
+                      hint="Bills or loans you must repay soon."
+                      prefix="₹"
+                      value={z.debts}
+                      onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
+                    />
+                  </div>
+                </CollapsibleCard>
+
+                <Accordion title="How Zakat is calculated">
+                  <div className="text-sm text-slate-600 leading-relaxed space-y-2">
+                    <p>
+                      Zakat is estimated at <b>2.5%</b> of your <b>net zakatable wealth</b>.
+                    </p>
+                    <p className="text-sm">
+                      <b>Net</b> = (Cash + Bank + Gold value + Silver value + Investments + Business assets + Money lent)
+                      − Debts
+                    </p>
+                    <p>
+                      Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver
+                      rate).
+                    </p>
+                  </div>
+                </Accordion>
+
+                <div style={{ height: TRAY_SPACER_HEIGHT }} />
+              </div>
+
+              <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
+                <div
+                  className="container-page pb-4"
+                  style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+                >
+                  <div className="max-w-md mx-auto pointer-events-auto">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
+                      {zakatResult && (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResultOpen((v) => {
+                                const next = !v;
+                                if (next && zakatResult?.breakdown?.nisabRateMissing) {
+                                  setOpenSection("metals");
+                                }
+                                return next;
+                              });
+                            }}
+                            className="w-full text-left"
+                            aria-expanded={resultOpen}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-[11px] tracking-widest text-emerald-800/70 font-semibold">
+                                  RESULT
+                                </div>
+                                <div className="mt-2 text-base font-semibold text-slate-900">{trayHeading}</div>
+                                <div className="mt-1 text-xs text-slate-500">
+                                  {resultOpen ? "Tap to collapse" : "Tap to expand"}
+                                </div>
+                              </div>
+
+                              <span
+                                className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
+                                aria-hidden="true"
+                              >
+                                {resultOpen ? "–" : "+"}
+                              </span>
+                            </div>
+                          </button>
+
+                          {resultOpen && (
+                            <div className="mt-4">
+                              {zakatResult.breakdown.nisabRateMissing ? (
+                                <div className="text-sm text-slate-600">
+                                  You can enter your assets without metal rates, but we need a valid{" "}
+                                  <b>{zakatResult.basis}</b> rate to calculate Nisab and confirm whether Zakat is due.
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between gap-4">
+                                  <div>
+                                    <div className="text-sm text-slate-600">
+                                      {zakatResult.eligible ? "Zakat to pay" : "Below Nisab"}
+                                    </div>
+                                    <div className="mt-1 text-3xl font-semibold text-emerald-900">
+                                      ₹ {formatINR(zakatResult.eligible ? zakatResult.zakat : 0)}
+                                    </div>
+                                    <div className="mt-2 text-xs text-slate-600">
+                                      Net: ₹ {formatINR(zakatResult.net)} · Nisab: ₹ {formatINR(zakatResult.nisab)} (
+                                      {zakatResult.basis})
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={[
+                                      "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold",
+                                      zakatResult.eligible
+                                        ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+                                        : "border-slate-200 bg-slate-100 text-slate-700"
+                                    ].join(" ")}
+                                  >
+                                    {zakatResult.eligible ? "Due" : "Not due"}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={handleDownloadPDF}
+                          className="w-full rounded-xl bg-brand-800 hover:bg-brand-900 text-white py-3 font-semibold soft-shadow transition"
+                        >
+                          Download PDF
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleShare}
+                          className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                        >
+                          Share
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        className="mt-3 w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 text-sm font-semibold transition"
+                      >
+                        Reset
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </>
-        )}
-      </section>
+            </>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
