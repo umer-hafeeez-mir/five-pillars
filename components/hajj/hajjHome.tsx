@@ -1,17 +1,17 @@
+// components/hajj/hajjHome.tsx
 "use client";
 
 import { useState } from "react";
-
+import Card from "@/components/Card";
 import RitualsSection from "@/components/hajj/sections/RitualsSection";
 import NowSection from "@/components/hajj/sections/NowSection";
 import DuasSection from "@/components/hajj/sections/DuasSection";
 import PracticalSection from "@/components/hajj/sections/PracticalSection";
 import ZiyarahSection from "@/components/hajj/sections/ZiyarahSection";
 import FoodSection from "@/components/hajj/sections/FoodSection";
+import { useMapContext, HajjSectionKey } from "@/lib/mapContext";
 
-type HajjSection = "rituals" | "now" | "duas" | "practical" | "ziyarah" | "food";
-
-const SECTIONS: { key: HajjSection; label: string; hint: string }[] = [
+const SECTIONS: { key: HajjSectionKey; label: string; hint: string }[] = [
   { key: "rituals", label: "Rituals", hint: "Day-by-day guide" },
   { key: "now", label: "Now", hint: "What to do right now" },
   { key: "duas", label: "Duas", hint: "Arabic + translation" },
@@ -21,7 +21,13 @@ const SECTIONS: { key: HajjSection; label: string; hint: string }[] = [
 ];
 
 export default function HajjHome() {
-  const [active, setActive] = useState<HajjSection>("rituals");
+  const [active, setActive] = useState<HajjSectionKey>("rituals");
+  const { setActiveSection } = useMapContext();
+
+  const change = (k: HajjSectionKey) => {
+    setActive(k);
+    setActiveSection(k);
+  };
 
   return (
     <div className="space-y-4">
@@ -32,7 +38,7 @@ export default function HajjHome() {
             <button
               key={s.key}
               type="button"
-              onClick={() => setActive(s.key)}
+              onClick={() => change(s.key)}
               className={[
                 "shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold transition",
                 active === s.key
@@ -54,6 +60,14 @@ export default function HajjHome() {
       {active === "practical" && <PracticalSection />}
       {active === "ziyarah" && <ZiyarahSection />}
       {active === "food" && <FoodSection />}
+
+      {/* Safety / offline note (optional, matches your tone) */}
+      <Card title="OFFLINE-FIRST NOTE">
+        <div className="text-sm text-slate-600 leading-relaxed">
+          Map is currently a placeholder card. Next step is integrating a real satellite map engine,
+          while keeping this same context-driven architecture.
+        </div>
+      </Card>
     </div>
   );
 }
