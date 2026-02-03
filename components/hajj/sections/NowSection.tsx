@@ -9,7 +9,8 @@ export default function NowSection() {
       <div className="text-sm text-slate-600 leading-relaxed space-y-3">
         <p>
           This will become “Now Mode” (super useful during Hajj).
-          You’ll click where you are (Mina/Arafat/Muzdalifah/Haram), and it shows the next actions.
+          You’ll click where you are (Mina, Arafat, Muzdalifah, or Haram),
+          and it will guide you on what to do next.
         </p>
 
         <div className="grid grid-cols-2 gap-2">
