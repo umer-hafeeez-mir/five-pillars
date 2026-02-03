@@ -143,6 +143,8 @@ export default function HomePage() {
 
   const prevEligibleRef = useRef<boolean>(false);
   const prevActiveRef = useRef<PillarKey>(active);
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+
 
   const pillar = PILLARS[active];
   const zakatResult = active === "zakat" ? calculateZakat(z) : null;
