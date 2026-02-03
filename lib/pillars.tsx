@@ -1,5 +1,5 @@
 import React from "react";
-import HajjHome from "@/components/hajj/HajjHome";
+import hajjHome from "@/components/hajj/hajjHome";
 
 export type PillarKey = "shahada" | "salah" | "zakat" | "sawm" | "hajj";
 
