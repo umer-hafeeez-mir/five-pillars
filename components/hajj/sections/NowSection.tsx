@@ -1,15 +1,15 @@
 "use client";
 
 import Card from "@/components/Card";
-import { NOW_LOCATIONS } from "@/components/hajj/data/rituals";
+import { NOW_LOCATIONS } from "@/components/hajj/data/now";
 
 export default function NowSection() {
   return (
     <Card title="I’M HERE NOW — WHAT SHOULD I DO?">
       <div className="text-sm text-slate-600 leading-relaxed space-y-3">
         <p>
-          This will become “Now Mode” (super useful during Hajj). You’ll click where you are (Mina/Arafat/Muzdalifah/Haram),
-          and it shows the next actions.
+          This will become “Now Mode” (super useful during Hajj).
+          You’ll click where you are (Mina/Arafat/Muzdalifah/Haram), and it shows the next actions.
         </p>
 
         <div className="grid grid-cols-2 gap-2">
@@ -27,4 +27,3 @@ export default function NowSection() {
     </Card>
   );
 }
-
