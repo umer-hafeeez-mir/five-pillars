@@ -1,12 +1,11 @@
-// lib/mapContext.ts
+// lib/mapContext.tsx
 "use client";
 
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
 
 export type LatLng = { lat: number; lng: number };
 
 export type HajjSectionKey = "rituals" | "now" | "duas" | "practical" | "ziyarah" | "food";
-
 export type LocationMode = "gps" | "manual";
 
 export type MapPinKind = "site" | "ziyarah" | "food" | "shop" | "pharmacy" | "other";
@@ -43,7 +42,6 @@ type MapState = {
   activeSection: HajjSectionKey;
   setActiveSection: (s: HajjSectionKey) => void;
 
-  // location
   locationMode: LocationMode;
   setLocationMode: (m: LocationMode) => void;
 
@@ -55,12 +53,10 @@ type MapState = {
   setManualLocation: (coords: LatLng) => void;
   clearManualLocation: () => void;
 
-  // map config driven by sections
   mapConfig: MapConfig;
   setMapConfig: (cfg: MapConfig) => void;
   resetMapConfig: () => void;
 
-  // computed "current" location
   currentLocation: LatLng | null;
 };
 
@@ -98,7 +94,6 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
     _setMapConfig((prev) => ({
       ...prev,
       ...cfg,
-      // allow clearing overlay by explicitly passing null
       overlay: cfg.overlay === undefined ? prev.overlay : cfg.overlay
     }));
   };
@@ -116,6 +111,20 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
     if (locationMode === "manual") return manualLocation;
     return gpsLocation;
   }, [locationMode, manualLocation, gpsLocation]);
+
+  // Expose GPS setter to geo.ts via window bridge (client-only)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // @ts-ignore
+    window.__FP_MAP__ = window.__FP_MAP__ || {};
+    // @ts-ignore
+    window.__FP_MAP__.setGps = (loc: LatLng | null, acc: number | null, err: string | null) => {
+      setGpsLocation(loc);
+      setGpsAccuracy(acc);
+      setGpsError(err);
+    };
+  }, []);
 
   const value: MapState = {
     activeSection,
@@ -139,20 +148,6 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
     currentLocation
   };
 
-  // Expose setters for gps via imperative helpers (see geo.ts)
-  // We keep them here via window so geo.ts can update without circular deps.
-  // This remains offline-safe and client-only.
-  if (typeof window !== "undefined") {
-    // @ts-ignore
-    window.__FP_MAP__ = window.__FP_MAP__ || {};
-    // @ts-ignore
-    window.__FP_MAP__.setGps = (loc: LatLng | null, acc: number | null, err: string | null) => {
-      setGpsLocation(loc);
-      setGpsAccuracy(acc);
-      setGpsError(err);
-    };
-  }
-
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -161,4 +156,3 @@ export function useMapContext() {
   if (!ctx) throw new Error("useMapContext must be used within MapProvider");
   return ctx;
 }
-
