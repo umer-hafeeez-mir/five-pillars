@@ -1,5 +1,3 @@
-export const PILLARS = { ... }
-
 import React from "react";
 import HajjHome from "@/components/hajj/HajjHome";
 
