@@ -1,5 +1,6 @@
 "use client";
 
+import HomePage from "@/components/HomePage";
 import { useEffect, useRef } from "react";
 import PillarTabs from "@/components/PillarTabs";
 import PillarHeader from "@/components/PillarHeader";
@@ -41,6 +42,7 @@ function n(v: any) {
 }
 
 type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
+type AppView = "home" | "pillars";
 
 function CollapsibleCard({
   title,
@@ -101,8 +103,11 @@ function defaultGoldHoldings(): GoldHoldings {
   };
 }
 
-export default function HomePage() {
+export default function Page() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
+
+  // ✅ New: switch between Home and Pillars (no long scroll page)
+  const [view, setView] = usePersistedState<AppView>("fp_view_v1", "home");
 
   const [z, setZ] = usePersistedState<ZakatForm>("fp_zakat_form_v3", {
     cash: "",
@@ -233,9 +238,7 @@ export default function HomePage() {
         await navigator.share({ title: "Zakat calculation", text });
         return;
       }
-    } catch {
-      // ignore and fallback
-    }
+    } catch {}
 
     try {
       await navigator.clipboard.writeText(text);
@@ -250,7 +253,6 @@ export default function HomePage() {
       const mockGold = 14413.5;
       const mockSilver = 165.25;
 
-      // keep behavior: fill nisab-basis rate into the most relevant bucket
       if (z.nisabBasis === "gold") {
         setZ((s) => ({
           ...s,
@@ -270,9 +272,6 @@ export default function HomePage() {
   };
 
   const basis = z.nisabBasis;
-
-  // Manual rate field depends on selected basis
-  // For gold basis: use 24k rate field (pure gold reference)
   const manualRateValue = basis === "gold" ? (z.goldHoldings?.["24k"]?.rate ?? "") : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
 
@@ -285,7 +284,6 @@ export default function HomePage() {
     ? "Zakat is due"
     : "Zakat is not due";
 
-  // Totals for subtitles
   const cashTotal = n(z.cash) + n(z.bank);
 
   const h = z.goldHoldings ?? defaultGoldHoldings();
@@ -329,7 +327,6 @@ export default function HomePage() {
     setOpenSection((curr) => (curr === section ? null : section));
   };
 
-  // ✅ helpers for gold holdings UI
   const activeKarat: GoldKarat = (z.goldKarat ?? "24k") as GoldKarat;
 
   const setActiveKarat = (k: GoldKarat) => {
@@ -343,19 +340,13 @@ export default function HomePage() {
       if (k === "custom") {
         return {
           ...s,
-          goldHoldings: {
-            ...curr,
-            custom: { ...curr.custom, ...patch }
-          }
+          goldHoldings: { ...curr, custom: { ...curr.custom, ...patch } }
         };
       }
 
       return {
         ...s,
-        goldHoldings: {
-          ...curr,
-          [k]: { ...(curr as any)[k], ...patch }
-        }
+        goldHoldings: { ...curr, [k]: { ...(curr as any)[k], ...patch } }
       };
     });
   };
@@ -365,10 +356,43 @@ export default function HomePage() {
       ? (z.goldHoldings?.custom ?? { grams: "", rate: "", purityPct: "" })
       : ((z.goldHoldings as any)?.[activeKarat] ?? { grams: "", rate: "" });
 
+  // ✅ When selecting from homepage, switch view + set active
+  const goToPillar = (k: PillarKey) => {
+    setActive(k);
+    setView("pillars");
+  };
+
+  // ✅ HOME VIEW ONLY (no stacking)
+  if (view === "home") {
+    return (
+      <main className="min-h-screen">
+        <HomePage
+          onExplore={() => setView("pillars")}
+          onSelectPillar={(k) => goToPillar(k)}
+        />
+      </main>
+    );
+  }
+
+  // ✅ PILLARS VIEW ONLY
   return (
     <main className="min-h-screen">
       <header className="container-page pt-10 pb-4 text-center">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
+        <div className="flex items-center justify-between max-w-5xl mx-auto px-4">
+          <button
+            type="button"
+            onClick={() => setView("home")}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+          >
+            ← Home
+          </button>
+
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+            Five Pillars of Islam
+          </h1>
+
+          <div className="w-[88px]" aria-hidden="true" />
+        </div>
 
         <div className="mt-6">
           <PillarTabs active={active} onChange={setActive} />
@@ -447,7 +471,6 @@ export default function HomePage() {
                         value={manualRateValue}
                         onChange={(v) => {
                           if (basis === "gold") {
-                            // store gold nisab reference as 24k rate
                             setZ((s: any) => ({
                               ...s,
                               goldHoldings: {
@@ -522,7 +545,6 @@ export default function HomePage() {
                 onToggle={() => toggleSection("metals")}
               >
                 <div className="space-y-3">
-                  {/* ✅ GOLD HOLDINGS: selector stays constant, fields below swap per selection */}
                   <div>
                     <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
 
@@ -549,7 +571,6 @@ export default function HomePage() {
                     </p>
                   </div>
 
-                  {/* ✅ Dynamic panel for the selected purity */}
                   <div className="rounded-xl border border-slate-200 bg-white p-3">
                     <div className="text-xs font-semibold tracking-wide text-slate-500">
                       {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
@@ -591,7 +612,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Silver stays simple */}
                   <Field
                     label="Silver (grams)"
                     hint="Weight of silver you own."
