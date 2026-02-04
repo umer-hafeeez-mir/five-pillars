@@ -482,13 +482,13 @@ export default function Page() {
             {/* All Zakat collapsible cards */}
             <div className="mt-6 space-y-4">
               <CollapsibleCard
-                title="Nisab Eligibility"
+                title="Nisab & Eligibility"
                 subtitle={nisabSubtitle}
                 open={openSection === "nisab"}
                 onToggle={() => toggleSection("nisab")}
               >
                 <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="text-sm font-semibold text-slate-900">Choose Nisab basis</div>
+                  <div className="text-sm font-semibold text-slate-900">Choose your Nisab basis</div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
@@ -519,8 +519,7 @@ export default function Page() {
                   </div>
 
                   <p className="mt-3 text-xs leading-relaxed text-slate-600">
-                    Nisab is the minimum wealth threshold used to decide whether Zakat is due. It is compared against
-                    your <b>total net assets</b> (not just metals).
+                    Nisab is the minimum threshold that determines whether Zakat is dueWe compare your <b>total net zakatable wealth</b> against Nisab.
                   </p>
 
                   <div className="mt-4">
@@ -555,7 +554,7 @@ export default function Page() {
                       <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
                       <span className="font-semibold">{estimatedNisab}</span>{" "}
                       <span className="text-slate-500">
-                        (based on {basis === "gold" ? "87.48g gold" : "612.36g silver"} × your rate)
+                        (Based on {basis === "gold" ? "87.48g gold" : "612.36g silver"} × your rate)
                       </span>
                     </div>
 
@@ -570,7 +569,7 @@ export default function Page() {
                         onClick={handleFetchOnline}
                         className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                       >
-                        Fetch online (optional)
+                        Auto-fill a sample rate
                       </button>
                     </div>
                   </div>
@@ -578,7 +577,7 @@ export default function Page() {
               </CollapsibleCard>
 
               <CollapsibleCard
-                title="Cash & Savings"
+                title="Cash & Bank"
                 subtitle={cashSubtitle}
                 open={openSection === "cash"}
                 onToggle={() => toggleSection("cash")}
@@ -586,14 +585,14 @@ export default function Page() {
                 <div className="space-y-3">
                   <Field
                     label="Cash in hand"
-                    hint="Money you have right now."
+                    hint="Money you currently have available."
                     prefix="₹"
                     value={z.cash}
                     onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
                   />
                   <Field
                     label="Cash in bank"
-                    hint="Your current bank balance."
+                    hint="Total balance across your bank accounts"
                     prefix="₹"
                     value={z.bank}
                     onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
@@ -602,14 +601,14 @@ export default function Page() {
               </CollapsibleCard>
 
               <CollapsibleCard
-                title="Precious Metals"
+                title="Gold & Silver"
                 subtitle={metalsSubtitle}
                 open={openSection === "metals"}
                 onToggle={() => toggleSection("metals")}
               >
                 <div className="space-y-3">
                   <div>
-                    <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
+                    <div className="text-xs font-semibold tracking-wide text-slate-500">Gold Purity</div>
 
                     <div className="mt-2 grid grid-cols-4 gap-2">
                       {(["24k", "22k", "18k", "custom"] as const).map((k) => (
@@ -630,7 +629,7 @@ export default function Page() {
                     </div>
 
                     <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                      Add grams & rate per purity. We’ll total everything. Nisab always uses pure gold/silver.
+                      Add the grams you own and the per gram rate for each purity.
                     </p>
                   </div>
 
@@ -670,7 +669,7 @@ export default function Page() {
                     </div>
 
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                      Tip: If you only know 22k/18k rate, that’s okay — we’ll derive a pure-gold rate for Nisab when
+                      Tip: Select the gold purity (24K, 22K, or 18K), then enter the grams and rate for the selected purity.
                       needed.
                     </div>
                   </div>
@@ -709,7 +708,7 @@ export default function Page() {
                   />
                   <Field
                     label="Business assets"
-                    hint="Goods held for sale, business cash, receivables."
+                    hint="Inventory, goods held for sale, business cash, receivables."
                     prefix="₹"
                     value={z.businessAssets}
                     onChange={(v) => setZ((s: any) => ({ ...s, businessAssets: v }))}
