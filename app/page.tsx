@@ -608,7 +608,7 @@ export default function Page() {
               >
                 <div className="space-y-3">
                   <div>
-                    <div className="text-xs font-semibold tracking-wide text-slate-500">Gold Purity</div>
+                    <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold Purity</div>
 
                     <div className="mt-2 grid grid-cols-4 gap-2">
                       {(["24k", "22k", "18k", "custom"] as const).map((k) => (
