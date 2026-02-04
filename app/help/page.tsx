@@ -1,15 +1,52 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+function BackButton() {
+  const router = useRouter();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        // If user came from inside the app, go back.
+        // If they opened /help directly (no history), fall back to home.
+        if (typeof window !== "undefined" && window.history.length > 1) {
+          router.back();
+        } else {
+          router.push("/");
+        }
+      }}
+      aria-label="Back"
+      title="Back"
+      className={[
+        "inline-flex h-9 w-9 items-center justify-center rounded-full",
+        "border border-slate-200 bg-white/90 backdrop-blur",
+        "text-slate-700 hover:text-emerald-900 hover:bg-white",
+        "shadow-sm transition",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+      ].join(" ")}
+    >
+      <span className="text-lg leading-none">←</span>
+    </button>
+  );
+}
 
 export default function HelpPage() {
   return (
     <main className="min-h-screen bg-[#F7F9F8]">
       <div className="container-page py-10">
         <div className="max-w-3xl mx-auto rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-          <header className="mb-4">
+          {/* Top row: Back */}
+          <div className="flex items-center justify-between">
+            <BackButton />
+            <div className="text-xs text-slate-500">Help</div>
+          </div>
+
+          <header className="mt-4 mb-4">
             <h1 className="text-2xl font-semibold text-slate-900">Help & Guides</h1>
             <p className="mt-2 text-sm text-slate-600">
               Everything in one place — getting started, Zakat calculations, privacy, and methodology.
@@ -95,9 +132,7 @@ export default function HelpPage() {
 
             <section id="privacy">
               <h2 className="text-base font-semibold text-slate-900">Privacy</h2>
-              <p className="mt-2">
-                All data is stored locally on your device. No accounts, no analytics, no tracking.
-              </p>
+              <p className="mt-2">All data is stored locally on your device. No accounts, no analytics, no tracking.</p>
             </section>
 
             <section id="feedback">
