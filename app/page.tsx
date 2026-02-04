@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import HomePage from "@/components/HomePage";
 import { useEffect, useRef } from "react";
 import PillarTabs from "@/components/PillarTabs";
@@ -40,6 +41,28 @@ function n(v: any) {
   const num = Number(v);
   return Number.isFinite(num) ? num : 0;
 }
+
+function HelpFab() {
+  return (
+    <Link
+      href="/help"
+      aria-label="Help"
+      title="Help"
+      className={[
+        "fixed right-4 top-4 z-50",
+        "inline-flex h-10 w-10 items-center justify-center rounded-full",
+        "border border-slate-200 bg-white/90 backdrop-blur",
+        "text-slate-700 hover:text-emerald-900 hover:bg-white",
+        "shadow-[0_10px_25px_rgba(2,6,23,0.12)]",
+        "transition",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+      ].join(" ")}
+    >
+      <span className="text-sm font-bold leading-none">?</span>
+    </Link>
+  );
+}
+
 
 type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
 type AppView = "home" | "pillars";
@@ -365,7 +388,8 @@ export default function Page() {
   // ✅ HOME VIEW ONLY (no stacking)
   if (view === "home") {
     return (
-      <main className="min-h-screen">
+      <main className="min-h-screen
+        <HelpFab />
         <HomePage
           onExplore={() => setView("pillars")}
           onSelectPillar={(k) => goToPillar(k)}
