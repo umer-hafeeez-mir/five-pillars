@@ -9,27 +9,6 @@ type HomePageProps = {
   onSelectPillar: (k: PillarKey) => void;
 };
 
-function HelpIconButton() {
-  return (
-    <Link
-      href="/help"
-      aria-label="Help"
-      title="Help"
-      className={[
-        "absolute right-4 top-4 z-10",
-        "inline-flex h-9 w-9 items-center justify-center rounded-full",
-        "border border-slate-200 bg-white/80 backdrop-blur",
-        "text-slate-600 hover:text-emerald-900 hover:bg-white",
-        "shadow-sm transition",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-      ].join(" ")}
-    >
-      <span className="text-sm font-bold leading-none">?</span>
-    </Link>
-  );
-}
-
-
 /**
  * Inline “mosque skyline” background (SVG data URI).
  * This gives you the exact hero feel from the screenshot without needing an image file.
@@ -226,7 +205,6 @@ export default function HomePage(props: HomePageProps) {
         <div className="mx-auto w-full max-w-[520px]">
           {/* Hero card (white, soft bg, skyline) */}
           <div className="relative rounded-[10px] bg-white border border-slate-200 shadow-[0_18px_40px_rgba(2,6,23,0.06)] overflow-hidden">
-            <HelpIconButton />
 
             {/* skyline */}
             <div
