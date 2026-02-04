@@ -129,7 +129,27 @@ export default function Page() {
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
   // ✅ New: switch between Home and Pillars (no long scroll page)
-  const [view, setView] = usePersistedState<AppView>("fp_view_v1", "home");
+  // Persisted view key
+const VIEW_KEY = "fp_view_v1";
+const [view, setView] = usePersistedState<AppView>(VIEW_KEY, "home");
+
+// Ensure first-ever app open lands on Home.
+// If the persisted key is already present, we respect the saved value (so returning users resume where they left off).
+useEffect(() => {
+  try {
+    const saved = localStorage.getItem(VIEW_KEY);
+    if (saved === null) {
+      // No saved preference → first-ever open → make sure we show Home.
+      // This will also persist the "home" default for future loads.
+      setView("home");
+    }
+  } catch {
+    // ignore localStorage errors in constrained environments
+  }
+  // run only once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
 
   const [z, setZ] = usePersistedState<ZakatForm>("fp_zakat_form_v3", {
     cash: "",
