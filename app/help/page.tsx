@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+
+
 export default function HelpPage() {
   return (
     <main className="min-h-screen bg-[#F7F9F8]">
