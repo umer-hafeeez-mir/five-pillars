@@ -524,7 +524,7 @@ export default function Page() {
 
                   <div className="mt-4">
                     <div className="text-sm font-semibold text-slate-900">
-                      {manualRateLabel} <span className="text-slate-500">(manual)</span>
+                      {manualRateLabel} <span className="text-slate-500">(Enter today’s rate)</span>
                     </div>
                     <div className="mt-2">
                       <Field
