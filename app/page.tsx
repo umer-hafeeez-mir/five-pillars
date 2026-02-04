@@ -519,7 +519,7 @@ export default function Page() {
                   </div>
 
                   <p className="mt-3 text-xs leading-relaxed text-slate-600">
-                    Nisab is the minimum threshold that determines whether Zakat is dueWe compare your <b>total net zakatable wealth</b> against Nisab.
+                    Nisab is the minimum threshold that determines whether Zakat is due. We compare your <b>total net zakatable wealth</b> against Nisab.
                   </p>
 
                   <div className="mt-4">
