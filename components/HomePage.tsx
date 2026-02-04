@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React from "react";
 import { PILLARS, PILLARS_ORDER, type PillarKey } from "@/lib/pillars";
 
@@ -300,12 +301,24 @@ export default function HomePage(props: HomePageProps) {
               </div>
 
               {/* Footer */}
-              <div className="mt-6 flex items-center justify-center gap-5 text-[10px] text-slate-500">
-                <button className="hover:text-slate-700 transition">About</button>
-                <button className="hover:text-slate-700 transition">Sources & methodology</button>
-                <button className="hover:text-slate-700 transition">Privacy</button>
-                <button className="hover:text-slate-700 transition">Feedback</button>
-              </div>
+             <div className="mt-6 flex items-center justify-center gap-5 text-[10px] text-slate-500">
+              <Link href="/help#getting-started" className="hover:text-slate-700 transition">
+                Getting started
+              </Link>
+              <Link href="/help#zakat" className="hover:text-slate-700 transition">
+                Zakat
+              </Link>
+              <Link href="/help#sources" className="hover:text-slate-700 transition">
+                Sources
+              </Link>
+              <Link href="/help#privacy" className="hover:text-slate-700 transition">
+                Privacy
+              </Link>
+              <Link href="/help#feedback" className="hover:text-slate-700 transition">
+                Feedback
+              </Link>
+            </div>
+
             </div>
           </div>
 
