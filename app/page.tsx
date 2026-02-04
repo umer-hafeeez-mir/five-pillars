@@ -380,12 +380,33 @@ export default function Page() {
       <header className="container-page pt-10 pb-4 text-center">
         <div className="flex items-center justify-between max-w-5xl mx-auto px-4">
           <button
-            type="button"
-            onClick={() => setView("home")}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-          >
-            ← Home
-          </button>
+  type="button"
+  onClick={() => setView("home")}
+  aria-label="Go to home"
+  title="Home"
+  className={[
+    "inline-flex h-9 w-9 items-center justify-center rounded-full",
+    "border border-slate-200 bg-white text-slate-600",
+    "hover:bg-slate-50 hover:text-emerald-800",
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+    "transition"
+  ].join(" ")}
+>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="h-4 w-4"
+    aria-hidden="true"
+  >
+    <path d="M3 10.5L12 3l9 7.5" />
+    <path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
+  </svg>
+</button>
+
 
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
             Five Pillars of Islam
