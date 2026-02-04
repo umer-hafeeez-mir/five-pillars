@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React from "react";
 import { PILLARS, PILLARS_ORDER, type PillarKey } from "@/lib/pillars";
 
@@ -7,6 +8,27 @@ type HomePageProps = {
   onExplore: () => void;
   onSelectPillar: (k: PillarKey) => void;
 };
+
+function HelpIconButton() {
+  return (
+    <Link
+      href="/help"
+      aria-label="Help"
+      title="Help"
+      className={[
+        "absolute right-4 top-4 z-10",
+        "inline-flex h-9 w-9 items-center justify-center rounded-full",
+        "border border-slate-200 bg-white/80 backdrop-blur",
+        "text-slate-600 hover:text-emerald-900 hover:bg-white",
+        "shadow-sm transition",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+      ].join(" ")}
+    >
+      <span className="text-sm font-bold leading-none">?</span>
+    </Link>
+  );
+}
+
 
 /**
  * Inline “mosque skyline” background (SVG data URI).
@@ -204,6 +226,8 @@ export default function HomePage(props: HomePageProps) {
         <div className="mx-auto w-full max-w-[520px]">
           {/* Hero card (white, soft bg, skyline) */}
           <div className="relative rounded-[10px] bg-white border border-slate-200 shadow-[0_18px_40px_rgba(2,6,23,0.06)] overflow-hidden">
+            <HelpIconButton />
+
             {/* skyline */}
             <div
               className="absolute inset-x-0 top-0 h-36 opacity-70"
@@ -300,12 +324,24 @@ export default function HomePage(props: HomePageProps) {
               </div>
 
               {/* Footer */}
-              <div className="mt-6 flex items-center justify-center gap-5 text-[10px] text-slate-500">
-                <button className="hover:text-slate-700 transition">About</button>
-                <button className="hover:text-slate-700 transition">Sources & methodology</button>
-                <button className="hover:text-slate-700 transition">Privacy</button>
-                <button className="hover:text-slate-700 transition">Feedback</button>
-              </div>
+             <div className="mt-6 flex items-center justify-center gap-5 text-[10px] text-slate-500">
+              <Link href="/help#getting-started" className="hover:text-slate-700 transition">
+                Getting started
+              </Link>
+              <Link href="/help#zakat" className="hover:text-slate-700 transition">
+                Zakat
+              </Link>
+              <Link href="/help#sources" className="hover:text-slate-700 transition">
+                Sources
+              </Link>
+              <Link href="/help#privacy" className="hover:text-slate-700 transition">
+                Privacy
+              </Link>
+              <Link href="/help#feedback" className="hover:text-slate-700 transition">
+                Feedback
+              </Link>
+            </div>
+
             </div>
           </div>
 
