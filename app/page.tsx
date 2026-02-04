@@ -569,7 +569,7 @@ export default function Page() {
                         onClick={handleFetchOnline}
                         className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                       >
-                        Auto-fill a sample rate
+                        Auto-fill today's rate
                       </button>
                     </div>
                   </div>
