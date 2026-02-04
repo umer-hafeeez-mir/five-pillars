@@ -670,8 +670,7 @@ export default function Page() {
 
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                       Tip: Select the gold purity (24K, 22K, or 18K), then enter the grams and rate for the selected purity.
-                      needed.
-                    </div>
+                        </div>
                   </div>
 
                   <Field
