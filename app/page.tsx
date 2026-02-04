@@ -42,6 +42,7 @@ function n(v: any) {
   return Number.isFinite(num) ? num : 0;
 }
 
+/* ---------- Help FAB (single global) ---------- */
 function HelpFab() {
   return (
     <Link
@@ -49,7 +50,7 @@ function HelpFab() {
       aria-label="Help"
       title="Help"
       className={[
-        "fixed right-4 top-4 z-50",
+        "fixed right-6 top-10 z-50",
         "inline-flex h-10 w-10 items-center justify-center rounded-full",
         "border border-slate-200 bg-white/90 backdrop-blur",
         "text-slate-700 hover:text-emerald-900 hover:bg-white",
@@ -63,9 +64,7 @@ function HelpFab() {
   );
 }
 
-type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
-type AppView = "home" | "pillars";
-
+/* ---------- Collapsible card helper ---------- */
 function CollapsibleCard({
   title,
   subtitle,
@@ -116,6 +115,7 @@ function CollapsibleCard({
   );
 }
 
+/* ---------- Default gold holdings helper ---------- */
 function defaultGoldHoldings(): GoldHoldings {
   return {
     "24k": { grams: "", rate: "" },
@@ -125,31 +125,28 @@ function defaultGoldHoldings(): GoldHoldings {
   };
 }
 
+type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
+type AppView = "home" | "pillars";
+
 export default function Page() {
-  const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
+  const VIEW_KEY = "fp_view_v1";
+  const [view, setView] = usePersistedState<AppView>(VIEW_KEY, "home");
 
-  // ✅ New: switch between Home and Pillars (no long scroll page)
-  // Persisted view key
-const VIEW_KEY = "fp_view_v1";
-const [view, setView] = usePersistedState<AppView>(VIEW_KEY, "home");
-
-// Ensure first-ever app open lands on Home.
-// If the persisted key is already present, we respect the saved value (so returning users resume where they left off).
-useEffect(() => {
-  try {
-    const saved = localStorage.getItem(VIEW_KEY);
-    if (saved === null) {
-      // No saved preference → first-ever open → make sure we show Home.
-      // This will also persist the "home" default for future loads.
-      setView("home");
+  // Ensure first-ever open lands on Home (if no key present)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === null) {
+        setView("home"); // persist "home" default for future loads
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore localStorage errors in constrained environments
-  }
-  // run only once on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // active pillar persisted separately
+  const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
   const [z, setZ] = usePersistedState<ZakatForm>("fp_zakat_form_v3", {
     cash: "",
@@ -193,7 +190,7 @@ useEffect(() => {
   const pillar = PILLARS[active];
   const zakatResult = active === "zakat" ? calculateZakat(z) : null;
 
-  // ✅ Auto-expand result tray when zakat becomes due (false -> true)
+  // Auto-expand result tray when zakat becomes due (false -> true)
   useEffect(() => {
     if (active !== "zakat") {
       prevActiveRef.current = active;
@@ -398,17 +395,18 @@ useEffect(() => {
       ? (z.goldHoldings?.custom ?? { grams: "", rate: "", purityPct: "" })
       : ((z.goldHoldings as any)?.[activeKarat] ?? { grams: "", rate: "" });
 
-  // ✅ When selecting from homepage, switch view + set active
+  /* When selecting from homepage, switch view + set active */
   const goToPillar = (k: PillarKey) => {
     setActive(k);
     setView("pillars");
   };
 
-  // ✅ HOME VIEW ONLY (no stacking)
+  /* ---------- HOME VIEW (first open lands here) ---------- */
   if (view === "home") {
     return (
       <main className="min-h-screen">
         <HelpFab />
+        {/* make HomePage call goToPillar (so it navigates into pillars view and sets active) */}
         <HomePage
           onExplore={() => setView("pillars")}
           onSelectPillar={(k) => goToPillar(k)}
@@ -417,45 +415,45 @@ useEffect(() => {
     );
   }
 
-  // ✅ PILLARS VIEW ONLY
+  /* ---------- PILLARS VIEW ---------- */
   return (
     <main className="min-h-screen">
       <HelpFab />
-      <header className="container-page pt-10 pb-4 text-center">
-        <div className="flex items-center justify-between max-w-5xl mx-auto px-4">
-          <button
-            type="button"
-            onClick={() => setView("home")}
-            aria-label="Go to home"
-            title="Home"
-            className={[
-              "inline-flex h-9 w-9 items-center justify-center rounded-full",
-              "border border-slate-200 bg-white text-slate-600",
-              "hover:bg-slate-50 hover:text-emerald-800",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
-              "transition"
-            ].join(" ")}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4"
-              aria-hidden="true"
-            >
-              <path d="M3 10.5L12 3l9 7.5" />
-              <path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
-            </svg>
-          </button>
 
+      {/* Fixed home icon (left) so it aligns with HelpFab */}
+      <button
+        type="button"
+        onClick={() => setView("home")}
+        aria-label="Go to home"
+        title="Home"
+        className={[
+          "fixed left-6 top-10 z-50 inline-flex h-9 w-9 items-center justify-center rounded-full",
+          "border border-slate-200 bg-white text-slate-600",
+          "hover:bg-slate-50 hover:text-emerald-800",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+          "transition"
+        ].join(" ")}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path d="M3 10.5L12 3l9 7.5" />
+          <path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
+        </svg>
+      </button>
+
+      <header className="container-page pt-10 pb-4 text-center">
+        <div className="flex items-center justify-center max-w-5xl mx-auto px-4">
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
             Five Pillars of Islam
           </h1>
-
-          <div className="w-[88px]" aria-hidden="true" />
         </div>
 
         <div className="mt-6">
@@ -481,6 +479,7 @@ useEffect(() => {
           </div>
         ) : (
           <>
+            {/* All Zakat collapsible cards */}
             <div className="mt-6 space-y-4">
               <CollapsibleCard
                 title="Nisab Eligibility"
@@ -578,9 +577,189 @@ useEffect(() => {
                 </div>
               </CollapsibleCard>
 
-              {/* rest of zakat UI preserved unchanged... */}
+              <CollapsibleCard
+                title="Cash & Savings"
+                subtitle={cashSubtitle}
+                open={openSection === "cash"}
+                onToggle={() => toggleSection("cash")}
+              >
+                <div className="space-y-3">
+                  <Field
+                    label="Cash in hand"
+                    hint="Money you have right now."
+                    prefix="₹"
+                    value={z.cash}
+                    onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
+                  />
+                  <Field
+                    label="Cash in bank"
+                    hint="Your current bank balance."
+                    prefix="₹"
+                    value={z.bank}
+                    onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
+                  />
+                </div>
+              </CollapsibleCard>
+
+              <CollapsibleCard
+                title="Precious Metals"
+                subtitle={metalsSubtitle}
+                open={openSection === "metals"}
+                onToggle={() => toggleSection("metals")}
+              >
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-xs font-semibold tracking-wide text-slate-500">GOLD PURITY</div>
+
+                    <div className="mt-2 grid grid-cols-4 gap-2">
+                      {(["24k", "22k", "18k", "custom"] as const).map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => setActiveKarat(k)}
+                          className={[
+                            "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                            String(activeKarat).toLowerCase() === k
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                              : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                          ].join(" ")}
+                        >
+                          {k === "custom" ? "Custom" : k.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                      Add grams & rate per purity. We’ll total everything. Nisab always uses pure gold/silver.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-xs font-semibold tracking-wide text-slate-500">
+                      {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
+                    </div>
+
+                    {activeKarat === "custom" && (
+                      <div className="mt-3">
+                        <Field
+                          label="Custom purity (%)"
+                          hint="Example: 91.6 for 22k, 75 for 18k"
+                          suffix="%"
+                          value={(activeHolding as any).purityPct ?? ""}
+                          onChange={(v) => updateHolding("custom", { purityPct: v })}
+                        />
+                      </div>
+                    )}
+
+                    <div className="mt-3 space-y-3">
+                      <Field
+                        label="Gold (grams)"
+                        hint="Weight of gold you own for this purity."
+                        suffix="g"
+                        value={(activeHolding as any).grams ?? ""}
+                        onChange={(v) => updateHolding(activeKarat, { grams: v })}
+                      />
+
+                      <Field
+                        label="Gold rate (₹/g)"
+                        hint="Current market price per gram for this purity."
+                        prefix="₹"
+                        value={(activeHolding as any).rate ?? ""}
+                        onChange={(v) => updateHolding(activeKarat, { rate: v })}
+                      />
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      Tip: If you only know 22k/18k rate, that’s okay — we’ll derive a pure-gold rate for Nisab when
+                      needed.
+                    </div>
+                  </div>
+
+                  <Field
+                    label="Silver (grams)"
+                    hint="Weight of silver you own."
+                    suffix="g"
+                    value={z.silverGrams}
+                    onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
+                  />
+
+                  <Field
+                    label="Silver rate (₹/g)"
+                    hint="Current market price per gram."
+                    prefix="₹"
+                    value={z.silverRate}
+                    onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
+                  />
+                </div>
+              </CollapsibleCard>
+
+              <CollapsibleCard
+                title="Other Assets"
+                subtitle={otherSubtitle}
+                open={openSection === "other"}
+                onToggle={() => toggleSection("other")}
+              >
+                <div className="space-y-3">
+                  <Field
+                    label="Investments / savings"
+                    hint="Stocks, mutual funds, savings plans, etc."
+                    prefix="₹"
+                    value={z.investments}
+                    onChange={(v) => setZ((s: any) => ({ ...s, investments: v }))}
+                  />
+                  <Field
+                    label="Business assets"
+                    hint="Goods held for sale, business cash, receivables."
+                    prefix="₹"
+                    value={z.businessAssets}
+                    onChange={(v) => setZ((s: any) => ({ ...s, businessAssets: v }))}
+                  />
+                  <Field
+                    label="Money lent to others"
+                    hint="Money you expect to receive back."
+                    prefix="₹"
+                    value={z.moneyLent}
+                    onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
+                  />
+                </div>
+              </CollapsibleCard>
+
+              <CollapsibleCard
+                title="Deductions"
+                subtitle={deductionsSubtitle}
+                open={openSection === "deductions"}
+                onToggle={() => toggleSection("deductions")}
+              >
+                <div className="space-y-3">
+                  <Field
+                    label="Debts & liabilities"
+                    hint="Bills or loans you must repay soon."
+                    prefix="₹"
+                    value={z.debts}
+                    onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
+                  />
+                </div>
+              </CollapsibleCard>
+
+              <Accordion title="How Zakat is calculated">
+                <div className="text-sm text-slate-600 leading-relaxed space-y-2">
+                  <p>
+                    Zakat is estimated at <b>2.5%</b> of your <b>net zakatable wealth</b>.
+                  </p>
+                  <p className="text-sm">
+                    <b>Net</b> = (Cash + Bank + Gold value + Silver value + Investments + Business assets + Money lent) −
+                    Debts
+                  </p>
+                  <p>
+                    Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver rate).
+                  </p>
+                </div>
+              </Accordion>
+
+              <div style={{ height: TRAY_SPACER_HEIGHT }} />
             </div>
 
+            {/* Result tray pinned bottom */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
