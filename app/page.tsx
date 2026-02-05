@@ -131,7 +131,18 @@ function defaultGoldHoldings(): GoldHoldings {
 type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
 type AppView = "home" | "pillars";
 type ZakatMode = "guided" | "power";
-type GuidedStep = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 intro, 1 basis, 2 rate, 3 cash, 4 gold/silver, 5 other, 6 deductions -> then summary
+/**
+ * Guided steps:
+ * 0 intro
+ * 1 nisab basis
+ * 2 rate (mandatory based on basis)
+ * 3 cash
+ * 4 do you own gold? (NEW)
+ * 5 metals (inline yes/no toggle inside this step too)
+ * 6 other assets
+ * 7 deductions -> then summary
+ */
+type GuidedStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /* =================== Page =================== */
 
@@ -187,7 +198,8 @@ export default function Page() {
 
   // Mode + Guided flow state
   const [zakatMode, setZakatMode] = usePersistedState<ZakatMode>("fp_zakat_mode_v1", "guided");
-  const [guidedStep, setGuidedStep] = usePersistedState<GuidedStep>("fp_guided_step_v1", 0);
+  const [guidedStep, setGuidedStep] = usePersistedState<GuidedStep>("fp_guided_step_v2", 0); // bumped key
+  const [ownsGold, setOwnsGold] = usePersistedState<boolean>("fp_guided_owns_gold_v1", true);
 
   // Summary visibility (both modes)
   const [showSummary, setShowSummary] = usePersistedState<boolean>("fp_zakat_summary_v1", false);
@@ -221,6 +233,7 @@ export default function Page() {
     setLastFetchedAt(null);
     setOpenSection("nisab");
     setGuidedStep(0);
+    setOwnsGold(true);
     setShowSummary(false);
   };
 
@@ -302,12 +315,10 @@ export default function Page() {
       ? (z.goldHoldings?.custom ?? { grams: "", rate: "", purityPct: "" })
       : ((z.goldHoldings as any)?.[activeKarat] ?? { grams: "", rate: "" });
 
-  // Derived values (same as earlier)
+  // Derived values
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? (z.goldHoldings?.["24k"]?.rate ?? "") : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
-
-  // ✅ Mandatory-rate gate (used in guided Step 2 + recommended for power-user Calculate)
   const isRateValid = n(manualRateValue) > 0;
 
   const estimatedNisab =
@@ -896,7 +907,7 @@ export default function Page() {
             ) : (
               /* ================= GUIDED FLOW ================= */
               <div className="mt-6 max-w-3xl mx-auto space-y-4">
-                {/* Intro card: disappears after user starts (step 0 -> 1) */}
+                {/* Intro card */}
                 {guidedStep === 0 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
@@ -966,7 +977,7 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 2: Rate (✅ mandatory based on basis) */}
+                {/* Step 2: Rate (mandatory) */}
                 {guidedStep === 2 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
@@ -1096,86 +1107,40 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 4: Metals */}
+                {/* ✅ NEW Step 4: Do you own gold? */}
                 {guidedStep === 4 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">4) Gold & silver</div>
-                    <div className="mt-1 text-sm text-slate-600">Add the grams you own and the per gram rate.</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">4) Do you own gold?</div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      If you don’t own gold, we’ll skip gold inputs and only ask about silver.
+                    </div>
 
-                    <div className="mt-4 space-y-3">
-                      <div>
-                        <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold Purity</div>
-                        <div className="mt-2 grid grid-cols-4 gap-2">
-                          {(["24k", "22k", "18k", "custom"] as const).map((k) => (
-                            <button
-                              key={k}
-                              type="button"
-                              onClick={() => setActiveKarat(k)}
-                              className={[
-                                "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                                String(activeKarat).toLowerCase() === k
-                                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                              ].join(" ")}
-                            >
-                              {k === "custom" ? "Custom" : k.toUpperCase()}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
-                        <div className="text-xs font-semibold tracking-wide text-slate-500">
-                          {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
-                        </div>
-
-                        {activeKarat === "custom" && (
-                          <div className="mt-3">
-                            <Field
-                              label="Custom purity (%)"
-                              hint="Example: 91.6 for 22k, 75 for 18k"
-                              suffix="%"
-                              value={(activeHolding as any).purityPct ?? ""}
-                              onChange={(v) => updateHolding("custom", { purityPct: v })}
-                            />
-                          </div>
-                        )}
-
-                        <div className="mt-3 space-y-3">
-                          <Field
-                            label="Gold (grams)"
-                            hint="Weight of gold you own for this purity."
-                            suffix="g"
-                            value={(activeHolding as any).grams ?? ""}
-                            onChange={(v) => updateHolding(activeKarat, { grams: v })}
-                          />
-
-                          <Field
-                            label="Gold rate (₹/g)"
-                            hint="Current market price per gram for this purity."
-                            prefix="₹"
-                            value={(activeHolding as any).rate ?? ""}
-                            onChange={(v) => updateHolding(activeKarat, { rate: v })}
-                          />
-                        </div>
-                      </div>
-
-                      <Field
-                        label="Silver (grams)"
-                        hint="Weight of silver you own."
-                        suffix="g"
-                        value={z.silverGrams}
-                        onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
-                      />
-
-                      <Field
-                        label="Silver rate (₹/g)"
-                        hint="Current market price per gram."
-                        prefix="₹"
-                        value={z.silverRate}
-                        onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
-                      />
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setOwnsGold(true)}
+                        className={[
+                          "rounded-xl border px-4 py-3 text-sm font-semibold transition",
+                          ownsGold
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                        ].join(" ")}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOwnsGold(false)}
+                        className={[
+                          "rounded-xl border px-4 py-3 text-sm font-semibold transition",
+                          !ownsGold
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                        ].join(" ")}
+                      >
+                        No
+                      </button>
                     </div>
 
                     <div className="mt-5 flex items-center justify-between gap-3">
@@ -1197,12 +1162,160 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 5: Other */}
+                {/* Step 5: Metals (✅ inline Yes/No toggle inside this step too) */}
                 {guidedStep === 5 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">5) Other assets</div>
-                    <div className="mt-1 text-sm text-slate-600">Add investments, business assets, and money lent.</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">5) Gold & silver</div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      Add what you own. You can toggle gold on/off here anytime.
+                    </div>
+
+                    <div className="mt-4 space-y-4">
+                      {/* Inline toggle */}
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <div className="text-xs font-semibold tracking-wide text-slate-500">Do you own gold?</div>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setOwnsGold(true)}
+                            className={[
+                              "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                              ownsGold
+                                ? "border-emerald-300 bg-white text-emerald-900"
+                                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                            ].join(" ")}
+                          >
+                            Yes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOwnsGold(false)}
+                            className={[
+                              "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                              !ownsGold
+                                ? "border-emerald-300 bg-white text-emerald-900"
+                                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                            ].join(" ")}
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Gold section (conditional) */}
+                      {ownsGold ? (
+                        <div className="space-y-3">
+                          <div>
+                            <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold Purity</div>
+                            <div className="mt-2 grid grid-cols-4 gap-2">
+                              {(["24k", "22k", "18k", "custom"] as const).map((k) => (
+                                <button
+                                  key={k}
+                                  type="button"
+                                  onClick={() => setActiveKarat(k)}
+                                  className={[
+                                    "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                                    String(activeKarat).toLowerCase() === k
+                                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                                  ].join(" ")}
+                                >
+                                  {k === "custom" ? "Custom" : k.toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-slate-200 bg-white p-3">
+                            <div className="text-xs font-semibold tracking-wide text-slate-500">
+                              {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
+                            </div>
+
+                            {activeKarat === "custom" && (
+                              <div className="mt-3">
+                                <Field
+                                  label="Custom purity (%)"
+                                  hint="Example: 91.6 for 22k, 75 for 18k"
+                                  suffix="%"
+                                  value={(activeHolding as any).purityPct ?? ""}
+                                  onChange={(v) => updateHolding("custom", { purityPct: v })}
+                                />
+                              </div>
+                            )}
+
+                            <div className="mt-3 space-y-3">
+                              <Field
+                                label="Gold (grams)"
+                                hint="Weight of gold you own for this purity."
+                                suffix="g"
+                                value={(activeHolding as any).grams ?? ""}
+                                onChange={(v) => updateHolding(activeKarat, { grams: v })}
+                              />
+
+                              <Field
+                                label="Gold rate (₹/g)"
+                                hint="Current market price per gram for this purity."
+                                prefix="₹"
+                                value={(activeHolding as any).rate ?? ""}
+                                onChange={(v) => updateHolding(activeKarat, { rate: v })}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                          Gold inputs skipped. You can switch “Do you own gold?” to Yes anytime.
+                        </div>
+                      )}
+
+                      {/* Silver (always shown) */}
+                      <div className="space-y-3">
+                        <Field
+                          label="Silver (grams)"
+                          hint="Weight of silver you own."
+                          suffix="g"
+                          value={z.silverGrams}
+                          onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
+                        />
+
+                        <Field
+                          label="Silver rate (₹/g)"
+                          hint="Current market price per gram."
+                          prefix="₹"
+                          value={z.silverRate}
+                          onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setGuidedStep(4)}
+                        className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGuidedStep(6)}
+                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Step 6: Other */}
+                {guidedStep === 6 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                    <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">6) Other assets</div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      Add investments, business assets, and money lent.
+                    </div>
 
                     <div className="mt-4 space-y-3">
                       <Field
@@ -1231,14 +1344,14 @@ export default function Page() {
                     <div className="mt-5 flex items-center justify-between gap-3">
                       <button
                         type="button"
-                        onClick={() => setGuidedStep(4)}
+                        onClick={() => setGuidedStep(5)}
                         className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
                       >
                         Back
                       </button>
                       <button
                         type="button"
-                        onClick={() => setGuidedStep(6)}
+                        onClick={() => setGuidedStep(7)}
                         className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Next
@@ -1247,11 +1360,11 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 6: Deductions + Calculate */}
-                {guidedStep === 6 ? (
+                {/* Step 7: Deductions + Calculate */}
+                {guidedStep === 7 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">6) Deductions</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">7) Deductions</div>
                     <div className="mt-1 text-sm text-slate-600">Add debts or liabilities you must repay soon.</div>
 
                     <div className="mt-4 space-y-3">
@@ -1267,7 +1380,7 @@ export default function Page() {
                     <div className="mt-5 flex items-center justify-between gap-3">
                       <button
                         type="button"
-                        onClick={() => setGuidedStep(5)}
+                        onClick={() => setGuidedStep(6)}
                         className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
                       >
                         Back
