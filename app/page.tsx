@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import HomePage from "@/components/HomePage";
 import PillarTabs from "@/components/PillarTabs";
@@ -80,53 +80,40 @@ function CollapsibleCard({
   onToggle: () => void;
   children: React.ReactNode;
 }) {
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-
-  // When opening, scroll the card into view so it doesn't feel hidden behind the bottom buttons.
-  useEffect(() => {
-    if (!open) return;
-    const t = window.setTimeout(() => {
-      wrapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
-    return () => window.clearTimeout(t);
-  }, [open]);
-
   return (
-    <div ref={wrapRef}>
-      <Card title="">
-        <button
-          type="button"
-          onClick={onToggle}
-          className={[
-            "group w-full text-left rounded-2xl transition",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-          ].join(" ")}
-          aria-expanded={open}
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-lg font-semibold text-slate-900">{title}</div>
-              <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
-            </div>
-
-            <span
-              className={[
-                "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
-                "border-slate-200 bg-white text-slate-700",
-                "group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:text-emerald-900",
-                "group-active:scale-[0.98] group-active:bg-emerald-100",
-                "shadow-sm"
-              ].join(" ")}
-              aria-hidden="true"
-            >
-              {open ? "˄" : "˅"}
-            </span>
+    <Card title="">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={[
+          "group w-full text-left rounded-2xl transition",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        ].join(" ")}
+        aria-expanded={open}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-lg font-semibold text-slate-900">{title}</div>
+            <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
           </div>
-        </button>
 
-        {open && <div className="mt-4">{children}</div>}
-      </Card>
-    </div>
+          <span
+            className={[
+              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
+              "border-slate-200 bg-white text-slate-700",
+              "group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:text-emerald-900",
+              "group-active:scale-[0.98] group-active:bg-emerald-100",
+              "shadow-sm"
+            ].join(" ")}
+            aria-hidden="true"
+          >
+            {open ? "˄" : "˅"}
+          </span>
+        </div>
+      </button>
+
+      {open && <div className="mt-4">{children}</div>}
+    </Card>
   );
 }
 
@@ -144,7 +131,19 @@ function defaultGoldHoldings(): GoldHoldings {
 type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
 type AppView = "home" | "pillars";
 type ZakatMode = "guided" | "power";
-type GuidedStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/**
+ * Guided steps:
+ * 0 intro
+ * 1 basis
+ * 2 rate
+ * 3 cash
+ * 4 owns gold?   <-- NEW
+ * 5 metals
+ * 6 other
+ * 7 deductions -> summary
+ */
+type GuidedStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /* =================== Page =================== */
 
@@ -191,17 +190,20 @@ export default function Page() {
     null
   );
 
-  // Power-user accordion open state (kept)
   const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
     "fp_zakat_open_section_v2",
     "nisab"
   );
 
-  // Mode + Guided flow state
   const [zakatMode, setZakatMode] = usePersistedState<ZakatMode>("fp_zakat_mode_v1", "guided");
   const [guidedStep, setGuidedStep] = usePersistedState<GuidedStep>("fp_guided_step_v1", 0);
 
-  // Summary visibility (both modes)
+  // NEW: guided answer (null until chosen)
+  const [guidedOwnsGold, setGuidedOwnsGold] = usePersistedState<null | boolean>(
+    "fp_guided_owns_gold_v1",
+    null
+  );
+
   const [showSummary, setShowSummary] = usePersistedState<boolean>("fp_zakat_summary_v1", false);
 
   const pillar = PILLARS[active];
@@ -233,6 +235,7 @@ export default function Page() {
     setLastFetchedAt(null);
     setOpenSection("nisab");
     setGuidedStep(0);
+    setGuidedOwnsGold(null);
     setShowSummary(false);
   };
 
@@ -265,7 +268,6 @@ export default function Page() {
 
   const handleFetchOnline = async () => {
     try {
-      // mock values
       const mockGold = 14413.5;
       const mockSilver = 165.25;
 
@@ -314,7 +316,7 @@ export default function Page() {
       ? (z.goldHoldings?.custom ?? { grams: "", rate: "", purityPct: "" })
       : ((z.goldHoldings as any)?.[activeKarat] ?? { grams: "", rate: "" });
 
-  // Derived values (same as earlier)
+  // Derived values
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? (z.goldHoldings?.["24k"]?.rate ?? "") : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
@@ -361,7 +363,6 @@ export default function Page() {
   const otherSubtitle = otherTotal > 0 ? `₹ ${formatINR(otherTotal)}` : "Not entered";
   const deductionsSubtitle = debtsTotal > 0 ? `₹ ${formatINR(debtsTotal)}` : "None";
 
-  // Home -> pillars
   const goToPillar = (k: PillarKey) => {
     setActive(k);
     setView("pillars");
@@ -428,7 +429,6 @@ export default function Page() {
           hideIcon={active === "zakat"}
         />
 
-        {/* Non-zakat pillars unchanged */}
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
             {pillar.blocks.map((b, idx) => (
@@ -439,7 +439,7 @@ export default function Page() {
           </div>
         ) : (
           <>
-            {/* Mode toggle (same place) */}
+            {/* Mode toggle */}
             <div className="mt-4 flex items-center justify-center">
               <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                 <button
@@ -476,7 +476,7 @@ export default function Page() {
               </div>
             </div>
 
-            {/* SUMMARY (used by both modes) */}
+            {/* SUMMARY (both modes) */}
             {showSummary ? (
               <div className="mt-6 max-w-3xl mx-auto">
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
@@ -495,8 +495,8 @@ export default function Page() {
                           ₹ {formatINR(zakatResult?.eligible ? zakatResult?.zakat ?? 0 : 0)}
                         </div>
                         <div className="mt-2 text-xs text-slate-600">
-                          Net: ₹ {formatINR(zakatResult?.net ?? 0)} · Nisab: ₹{" "}
-                          {formatINR(zakatResult?.nisab ?? 0)} ({zakatResult?.basis ?? basis})
+                          Net: ₹ {formatINR(zakatResult?.net ?? 0)} · Nisab: ₹ {formatINR(zakatResult?.nisab ?? 0)} (
+                          {zakatResult?.basis ?? basis})
                         </div>
                         {zakatResult?.breakdown?.nisabRateMissing ? (
                           <div className="mt-2 text-xs text-amber-700">
@@ -568,8 +568,8 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Summary bottom buttons: Share + Reset */}
-                <BottomBar cols={2}>
+                {/* Summary bottom buttons */}
+                <BottomBar columns={2}>
                   <button
                     type="button"
                     onClick={handleShare}
@@ -864,8 +864,8 @@ export default function Page() {
                   </div>
                 </Accordion>
 
-                {/* POWER USERS bottom buttons: 3 in one row */}
-                <BottomBar cols={3}>
+                {/* POWER USERS bottom buttons: 3 in a row */}
+                <BottomBar columns={3}>
                   <button
                     type="button"
                     onClick={() => setShowSummary(true)}
@@ -890,9 +890,9 @@ export default function Page() {
                 </BottomBar>
               </div>
             ) : (
-              /* ================= GUIDED FLOW (RESTORED) ================= */
+              /* ================= GUIDED FLOW ================= */
               <div className="mt-6 max-w-3xl mx-auto space-y-4">
-                {/* Intro card: disappears after user starts (step 0 -> 1) */}
+                {/* Intro */}
                 {guidedStep === 0 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
@@ -900,7 +900,7 @@ export default function Page() {
                       Let’s calculate your Zakat step-by-step
                     </div>
                     <div className="mt-2 text-sm text-slate-600">
-                      Answer a few quick questions, or switch to Power Users mode for a self-serve experience.
+                      Answer a few quick questions. You can switch to Power users anytime.
                     </div>
 
                     <div className="mt-4 flex justify-end">
@@ -915,12 +915,12 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 1: Nisab basis */}
+                {/* Step 1 */}
                 {guidedStep === 1 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab </div>
-                    <div className="mt-1 text-sm text-slate-600">Do you want to calculate Zakat using silver or gold?</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab basis</div>
+                    <div className="mt-1 text-sm text-slate-600">Do you want to calculate using silver or gold?</div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
@@ -962,7 +962,7 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 2: Rate */}
+                {/* Step 2 */}
                 {guidedStep === 2 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
@@ -1035,13 +1035,13 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 3: Cash */}
+                {/* Step 3 */}
                 {guidedStep === 3 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">3) Add Cash on Hand and Bank</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">3) Cash & bank</div>
                     <div className="mt-1 text-sm text-slate-600">
-                      Add the money you currently have available, including cash on hand and funds in your bank accounts.
+                      Add money you currently have available and bank balances.
                     </div>
 
                     <div className="mt-4 space-y-3">
@@ -1080,71 +1080,169 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 4: Metals */}
+                {/* Step 4 (NEW): Owns gold? */}
                 {guidedStep === 4 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">4) Add Gold & Silver Details</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">4) Do you own gold?</div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      If yes, we’ll ask for your gold purity, grams, and rate.
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setGuidedOwnsGold(true)}
+                        className={[
+                          "rounded-xl border px-4 py-3 text-sm font-semibold transition",
+                          guidedOwnsGold === true
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                        ].join(" ")}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGuidedOwnsGold(false)}
+                        className={[
+                          "rounded-xl border px-4 py-3 text-sm font-semibold transition",
+                          guidedOwnsGold === false
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                        ].join(" ")}
+                      >
+                        No
+                      </button>
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setGuidedStep(3)}
+                        className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        disabled={guidedOwnsGold === null}
+                        onClick={() => setGuidedStep(5)}
+                        className={[
+                          "rounded-xl px-5 py-2.5 text-sm font-semibold transition",
+                          guidedOwnsGold === null
+                            ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                            : "bg-emerald-800 hover:bg-emerald-900 text-white"
+                        ].join(" ")}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Step 5: Metals (with inline Yes/No toggle) */}
+                {guidedStep === 5 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                    <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">5) Gold & silver</div>
                     <div className="mt-1 text-sm text-slate-600">Add the grams you own and the per gram rate.</div>
 
+                    {/* Inline toggle (your recommendation) */}
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="text-xs font-semibold tracking-wide text-slate-600">Do you own gold?</div>
+                      <div className="mt-2 inline-flex rounded-xl border border-slate-200 bg-white p-1">
+                        <button
+                          type="button"
+                          onClick={() => setGuidedOwnsGold(true)}
+                          className={[
+                            "px-3 py-1.5 text-sm font-semibold rounded-lg transition",
+                            guidedOwnsGold === true
+                              ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                              : "text-slate-700"
+                          ].join(" ")}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGuidedOwnsGold(false)}
+                          className={[
+                            "px-3 py-1.5 text-sm font-semibold rounded-lg transition",
+                            guidedOwnsGold === false
+                              ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                              : "text-slate-700"
+                          ].join(" ")}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="mt-4 space-y-3">
-                      <div>
-                        <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold Purity</div>
-                        <div className="mt-2 grid grid-cols-4 gap-2">
-                          {(["24k", "22k", "18k", "custom"] as const).map((k) => (
-                            <button
-                              key={k}
-                              type="button"
-                              onClick={() => setActiveKarat(k)}
-                              className={[
-                                "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                                String(activeKarat).toLowerCase() === k
-                                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                              ].join(" ")}
-                            >
-                              {k === "custom" ? "Custom" : k.toUpperCase()}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-slate-200 bg-white p-3">
-                        <div className="text-xs font-semibold tracking-wide text-slate-500">
-                          {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
-                        </div>
-
-                        {activeKarat === "custom" && (
-                          <div className="mt-3">
-                            <Field
-                              label="Custom purity (%)"
-                              hint="Example: 91.6 for 22k, 75 for 18k"
-                              suffix="%"
-                              value={(activeHolding as any).purityPct ?? ""}
-                              onChange={(v) => updateHolding("custom", { purityPct: v })}
-                            />
+                      {/* Gold fields only if they own gold */}
+                      {guidedOwnsGold !== false ? (
+                        <>
+                          <div>
+                            <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold Purity</div>
+                            <div className="mt-2 grid grid-cols-4 gap-2">
+                              {(["24k", "22k", "18k", "custom"] as const).map((k) => (
+                                <button
+                                  key={k}
+                                  type="button"
+                                  onClick={() => setActiveKarat(k)}
+                                  className={[
+                                    "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                                    String(activeKarat).toLowerCase() === k
+                                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                                  ].join(" ")}
+                                >
+                                  {k === "custom" ? "Custom" : k.toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        )}
 
-                        <div className="mt-3 space-y-3">
-                          <Field
-                            label="Gold (grams)"
-                            hint="Weight of gold you own for this purity."
-                            suffix="g"
-                            value={(activeHolding as any).grams ?? ""}
-                            onChange={(v) => updateHolding(activeKarat, { grams: v })}
-                          />
+                          <div className="rounded-xl border border-slate-200 bg-white p-3">
+                            <div className="text-xs font-semibold tracking-wide text-slate-500">
+                              {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
+                            </div>
 
-                          <Field
-                            label="Gold rate (₹/g)"
-                            hint="Current market price per gram for this purity."
-                            prefix="₹"
-                            value={(activeHolding as any).rate ?? ""}
-                            onChange={(v) => updateHolding(activeKarat, { rate: v })}
-                          />
-                        </div>
-                      </div>
+                            {activeKarat === "custom" && (
+                              <div className="mt-3">
+                                <Field
+                                  label="Custom purity (%)"
+                                  hint="Example: 91.6 for 22k, 75 for 18k"
+                                  suffix="%"
+                                  value={(activeHolding as any).purityPct ?? ""}
+                                  onChange={(v) => updateHolding("custom", { purityPct: v })}
+                                />
+                              </div>
+                            )}
 
+                            <div className="mt-3 space-y-3">
+                              <Field
+                                label="Gold (grams)"
+                                hint="Weight of gold you own for this purity."
+                                suffix="g"
+                                value={(activeHolding as any).grams ?? ""}
+                                onChange={(v) => updateHolding(activeKarat, { grams: v })}
+                              />
+
+                              <Field
+                                label="Gold rate (₹/g)"
+                                hint="Current market price per gram for this purity."
+                                prefix="₹"
+                                value={(activeHolding as any).rate ?? ""}
+                                onChange={(v) => updateHolding(activeKarat, { rate: v })}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
+
+                      {/* Silver fields always */}
                       <Field
                         label="Silver (grams)"
                         hint="Weight of silver you own."
@@ -1165,14 +1263,14 @@ export default function Page() {
                     <div className="mt-5 flex items-center justify-between gap-3">
                       <button
                         type="button"
-                        onClick={() => setGuidedStep(3)}
+                        onClick={() => setGuidedStep(4)}
                         className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
                       >
                         Back
                       </button>
                       <button
                         type="button"
-                        onClick={() => setGuidedStep(5)}
+                        onClick={() => setGuidedStep(6)}
                         className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Next
@@ -1181,11 +1279,11 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 5: Other */}
-                {guidedStep === 5 ? (
+                {/* Step 6: Other */}
+                {guidedStep === 6 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">5) Add Other Asset Details</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">6) Other assets</div>
                     <div className="mt-1 text-sm text-slate-600">Add investments, business assets, and money lent.</div>
 
                     <div className="mt-4 space-y-3">
@@ -1215,14 +1313,14 @@ export default function Page() {
                     <div className="mt-5 flex items-center justify-between gap-3">
                       <button
                         type="button"
-                        onClick={() => setGuidedStep(4)}
+                        onClick={() => setGuidedStep(5)}
                         className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
                       >
                         Back
                       </button>
                       <button
                         type="button"
-                        onClick={() => setGuidedStep(6)}
+                        onClick={() => setGuidedStep(7)}
                         className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Next
@@ -1231,11 +1329,11 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* Step 6: Deductions + Calculate */}
-                {guidedStep === 6 ? (
+                {/* Step 7: Deductions + Calculate */}
+                {guidedStep === 7 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">6) Deductions</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">7) Deductions</div>
                     <div className="mt-1 text-sm text-slate-600">Add debts or liabilities you must repay soon.</div>
 
                     <div className="mt-4 space-y-3">
@@ -1251,7 +1349,7 @@ export default function Page() {
                     <div className="mt-5 flex items-center justify-between gap-3">
                       <button
                         type="button"
-                        onClick={() => setGuidedStep(5)}
+                        onClick={() => setGuidedStep(6)}
                         className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
                       >
                         Back
@@ -1267,8 +1365,8 @@ export default function Page() {
                   </div>
                 ) : null}
 
-                {/* GUIDED FLOW bottom buttons: Share + Reset */}
-                <BottomBar cols={2}>
+                {/* Guided bottom buttons: Share + Reset */}
+                <BottomBar columns={2}>
                   <button
                     type="button"
                     onClick={handleShare}
@@ -1323,27 +1421,27 @@ function Row({
   );
 }
 
-function BottomBar({ children, cols = 2 }: { children: React.ReactNode; cols?: 2 | 3 }) {
-  // Spacer ensures content (including Next/Back) can scroll above the fixed bar on mobile/web.
-  const spacer = cols === 3 ? 120 : 110;
-  const gridClass = cols === 3 ? "grid grid-cols-3 gap-3" : "grid grid-cols-2 gap-3";
-
+function BottomBar({
+  children,
+  columns
+}: {
+  children: React.ReactNode;
+  columns: 2 | 3;
+}) {
   return (
-    <>
-      <div aria-hidden="true" style={{ height: spacer }} />
-
-      <div className="fixed inset-x-0 bottom-0 z-40">
-        <div
-          className="container-page pb-4"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
-        >
-          <div className="max-w-3xl mx-auto">
-            <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
-              <div className={gridClass}>{children}</div>
+    <div className="fixed inset-x-0 bottom-0 z-40">
+      <div
+        className="container-page pb-4"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+      >
+        <div className="max-w-3xl mx-auto">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 soft-shadow">
+            <div className={columns === 3 ? "grid grid-cols-3 gap-3" : "grid grid-cols-2 gap-3"}>
+              {children}
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
