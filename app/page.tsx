@@ -1,5 +1,6 @@
 "use client";
 
+import GuidedZakatV1 from "@/components/GuidedZakatV1";
 import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import HomePage from "@/components/HomePage";
