@@ -915,7 +915,7 @@ export default function Page() {
                       Let’s calculate your Zakat step-by-step
                     </div>
                     <div className="mt-2 text-sm text-slate-600">
-                      Answer a few quick questions. You can switch to Power users anytime.
+                      Answer a few quick questions, or switch to Power Users mode for a self-serve experience.
                     </div>
 
                     <div className="mt-4 flex justify-end">
@@ -934,8 +934,8 @@ export default function Page() {
                 {guidedStep === 1 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab basis</div>
-                    <div className="mt-1 text-sm text-slate-600">Do you want to calculate using silver or gold?</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab </div>
+                    <div className="mt-1 text-sm text-slate-600">Do you want to calculate Zakat based on silver or gold?</div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
@@ -1017,7 +1017,7 @@ export default function Page() {
                       ) : null}
 
                       <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                        <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
+                        <span className="font-semibold">Estimated Nisab Threshold:</span>{" "}
                         <span className="font-semibold">{estimatedNisab}</span>
                       </div>
 
@@ -1066,9 +1066,9 @@ export default function Page() {
                 {guidedStep === 3 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">3) Cash & bank</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">3) Add Cash in Hand and bank</div>
                     <div className="mt-1 text-sm text-slate-600">
-                      Add money you currently have available and bank balances.
+                      Add the money you currently have available including cash in hand and funds in your bank accounts.
                     </div>
 
                     <div className="mt-4 space-y-3">
@@ -1113,7 +1113,7 @@ export default function Page() {
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
                     <div className="mt-2 text-base font-semibold text-slate-900">4) Do you own gold?</div>
                     <div className="mt-1 text-sm text-slate-600">
-                      If you don’t own gold, we’ll skip gold inputs and only ask about silver.
+                      If you don’t own gold, we willl skip gold inputs and only ask about silver.
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
@@ -1166,9 +1166,9 @@ export default function Page() {
                 {guidedStep === 5 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">5) Gold & silver</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">5) Add Gold and Silver Details</div>
                     <div className="mt-1 text-sm text-slate-600">
-                      Add what you own. You can toggle gold on/off here anytime.
+                      Add details of the gold and silver you own. You can toggle gold on or off here at any time.
                     </div>
 
                     <div className="mt-4 space-y-4">
@@ -1317,7 +1317,7 @@ export default function Page() {
                 {guidedStep === 6 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">6) Other assets</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">6) Add Other Asset Details</div>
                     <div className="mt-1 text-sm text-slate-600">
                       Add investments, business assets, and money lent.
                     </div>
@@ -1369,8 +1369,8 @@ export default function Page() {
                 {guidedStep === 7 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">7) Deductions</div>
-                    <div className="mt-1 text-sm text-slate-600">Add debts or liabilities you must repay soon.</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">7) Add Deduction Details</div>
+                    <div className="mt-1 text-sm text-slate-600">Add debts, loans or liabilities you must repay soon.</div>
 
                     <div className="mt-4 space-y-3">
                       <Field
