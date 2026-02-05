@@ -900,7 +900,7 @@ export default function Page() {
                       Let’s calculate your Zakat step-by-step
                     </div>
                     <div className="mt-2 text-sm text-slate-600">
-                      Answer a few quick questions, or switch to Power User mode for a self-serve experience.
+                      Answer a few quick questions, or switch to Power Users mode for a self-serve experience.
                     </div>
 
                     <div className="mt-4 flex justify-end">
@@ -919,8 +919,8 @@ export default function Page() {
                 {guidedStep === 1 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab basis</div>
-                    <div className="mt-1 text-sm text-slate-600">Do you want to calculate using silver or gold?</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab </div>
+                    <div className="mt-1 text-sm text-slate-600">Do you want to calculate Zakat using silver or gold?</div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
@@ -1039,9 +1039,9 @@ export default function Page() {
                 {guidedStep === 3 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">3) Cash & bank</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">3) Add Cash on Hand and Bank</div>
                     <div className="mt-1 text-sm text-slate-600">
-                      Add money you currently have available and bank balances.
+                      Add the money you currently have available, including cash on hand and funds in your bank accounts.
                     </div>
 
                     <div className="mt-4 space-y-3">
@@ -1084,7 +1084,7 @@ export default function Page() {
                 {guidedStep === 4 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">4) Gold & silver</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">4) Add Gold & Silver Details</div>
                     <div className="mt-1 text-sm text-slate-600">Add the grams you own and the per gram rate.</div>
 
                     <div className="mt-4 space-y-3">
@@ -1185,7 +1185,7 @@ export default function Page() {
                 {guidedStep === 5 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">5) Other assets</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">5) Add Other Asset Details</div>
                     <div className="mt-1 text-sm text-slate-600">Add investments, business assets, and money lent.</div>
 
                     <div className="mt-4 space-y-3">
