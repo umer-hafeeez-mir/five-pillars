@@ -900,7 +900,7 @@ export default function Page() {
                       Let’s calculate your Zakat step-by-step
                     </div>
                     <div className="mt-2 text-sm text-slate-600">
-                      Answer a few quick questions. You can switch to Power users anytime.
+                      Answer a few quick questions, or switch to Power User mode for a self-serve experience.
                     </div>
 
                     <div className="mt-4 flex justify-end">
