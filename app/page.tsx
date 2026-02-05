@@ -44,17 +44,16 @@ function n(v: any) {
   return Number.isFinite(num) ? num : 0;
 }
 
-/* ---------------- Slide Transition (Horizontal) ---------------- */
+/* ---------------- Horizontal Slide Transition ---------------- */
 
 type SlideDir = "forward" | "back";
 
 /**
- * Horizontal slide transition with direction.
+ * Direction-aware horizontal slide.
  * - forward: new enters from right, old exits to left
  * - back: new enters from left, old exits to right
  *
- * Keeps old panel for duration so it slides out cleanly.
- * Motion-reduce safe.
+ * No libs. Motion-reduce safe.
  */
 function SlideTransition({
   transitionKey,
@@ -65,114 +64,71 @@ function SlideTransition({
   direction: SlideDir;
   children: React.ReactNode;
 }) {
-  const DURATION = 260; // ms
-  const [prev, setPrev] = useState<React.ReactNode | null>(null);
+  const DURATION = 260;
+
+  const [currKey, setCurrKey] = useState<string | number>(transitionKey);
+  const [currNode, setCurrNode] = useState<React.ReactNode>(children);
+
   const [prevKey, setPrevKey] = useState<string | number | null>(null);
+  const [prevNode, setPrevNode] = useState<React.ReactNode | null>(null);
   const [animating, setAnimating] = useState(false);
-  const lastKey = useRef<string | number>(transitionKey);
 
+  // If content changes without key change, keep it updated (no animation)
   useEffect(() => {
-    if (lastKey.current === transitionKey) return;
-
-    // On change, snapshot previous and animate to new.
-    setPrev(children); // NOTE: we set prev to "current children" BEFORE render? We need previous, so:
-    // We'll handle correctly by storing old in a ref (below).
-  }, []); // intentional no-op; real logic is below
-
-  const prevChildrenRef = useRef<React.ReactNode>(children);
-
-  useEffect(() => {
-    // Keep ref always pointing to latest rendered children
-    prevChildrenRef.current = children;
+    if (transitionKey === currKey) setCurrNode(children);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [children]);
 
   useEffect(() => {
-    if (lastKey.current === transitionKey) return;
+    if (transitionKey === currKey) return;
 
-    // Snapshot previous (the last rendered children)
-    setPrev(prevChildrenRef.current);
-    setPrevKey(lastKey.current);
+    setPrevNode(currNode);
+    setPrevKey(currKey);
+
+    setCurrNode(children);
+    setCurrKey(transitionKey);
 
     setAnimating(true);
     const t = window.setTimeout(() => {
       setAnimating(false);
-      setPrev(null);
+      setPrevNode(null);
       setPrevKey(null);
     }, DURATION);
 
-    lastKey.current = transitionKey;
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transitionKey]);
 
-  const enterFrom = direction === "forward" ? "translate-x-[10%]" : "-translate-x-[10%]";
-  const exitTo = direction === "forward" ? "-translate-x-[10%]" : "translate-x-[10%]";
+  const enterFrom = direction === "forward" ? "translateX(12%)" : "translateX(-12%)";
+  const exitTo = direction === "forward" ? "translateX(-12%)" : "translateX(12%)";
 
   return (
     <div className="relative overflow-hidden motion-reduce:overflow-visible">
-      {/* Previous panel (slides out) */}
-      {prev && animating ? (
-        <div
-          key={`prev-${String(prevKey)}`}
-          className={[
-            "absolute inset-0",
-            "transition-all ease-out",
-            `duration-[${DURATION}ms]`,
-            "opacity-100 translate-x-0",
-            "motion-reduce:transition-none motion-reduce:static motion-reduce:opacity-100 motion-reduce:transform-none"
-          ].join(" ")}
-          style={{
-            transform: "translateX(0%)"
-          }}
-        >
-          <div
-            className={[
-              "transition-all ease-out",
-              `duration-[${DURATION}ms]`,
-              "opacity-100",
-              "motion-reduce:transition-none"
-            ].join(" ")}
-            style={{
-              transform: direction === "forward" ? "translateX(0%)" : "translateX(0%)"
-            }}
-          >
-            {/* We apply exit transform via inline style on mount using rAF */}
-            <SlideOut dir={direction} duration={DURATION} exitTo={exitTo}>
-              {prev}
-            </SlideOut>
-          </div>
-        </div>
+      {/* previous panel (slides out) */}
+      {prevNode && animating ? (
+        <SlideOut key={`prev-${String(prevKey)}`} duration={DURATION} to={exitTo}>
+          {prevNode}
+        </SlideOut>
       ) : null}
 
-      {/* Current panel (slides in) */}
-      <div
-        key={`curr-${String(transitionKey)}`}
-        className={[
-          "relative",
-          animating ? "absolute inset-0" : "",
-          "motion-reduce:static"
-        ].join(" ")}
-      >
-        <SlideIn dir={direction} duration={DURATION} enterFrom={enterFrom}>
-          {children}
-        </SlideIn>
-      </div>
+      {/* current panel (slides in) */}
+      <SlideIn key={`curr-${String(currKey)}`} duration={DURATION} from={enterFrom}>
+        {currNode}
+      </SlideIn>
 
-      {/* Spacer to keep layout height stable while animating */}
-      {animating ? <div aria-hidden className="invisible">{children}</div> : null}
+      {/* height stabilizer while animating */}
+      {animating ? <div aria-hidden className="invisible">{currNode}</div> : null}
     </div>
   );
 }
 
 function SlideIn({
-  dir,
   duration,
-  enterFrom,
+  from,
   children
 }: {
-  dir: SlideDir;
   duration: number;
-  enterFrom: string;
+  from: string;
   children: React.ReactNode;
 }) {
   const [on, setOn] = useState(false);
@@ -182,20 +138,15 @@ function SlideIn({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Use inline transform to avoid Tailwind needing arbitrary runtime values
-  const from = dir === "forward" ? "translateX(12%)" : "translateX(-12%)";
-  const to = "translateX(0%)";
-
   return (
     <div
-      className={[
-        "transition-all ease-out",
-        `duration-[${duration}ms]`,
-        "motion-reduce:transition-none motion-reduce:transform-none motion-reduce:opacity-100"
-      ].join(" ")}
+      className="relative motion-reduce:static"
       style={{
-        opacity: on ? 1 : 0,
-        transform: on ? to : from
+        transitionProperty: "transform, opacity",
+        transitionDuration: `${duration}ms`,
+        transitionTimingFunction: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        transform: on ? "translateX(0%)" : from,
+        opacity: on ? 1 : 0
       }}
     >
       {children}
@@ -204,14 +155,12 @@ function SlideIn({
 }
 
 function SlideOut({
-  dir,
   duration,
-  exitTo,
+  to,
   children
 }: {
-  dir: SlideDir;
   duration: number;
-  exitTo: string;
+  to: string;
   children: React.ReactNode;
 }) {
   const [off, setOff] = useState(false);
@@ -221,19 +170,15 @@ function SlideOut({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const from = "translateX(0%)";
-  const to = dir === "forward" ? "translateX(-12%)" : "translateX(12%)";
-
   return (
     <div
-      className={[
-        "transition-all ease-out",
-        `duration-[${duration}ms]`,
-        "motion-reduce:transition-none motion-reduce:transform-none motion-reduce:opacity-100"
-      ].join(" ")}
+      className="absolute inset-0 motion-reduce:static"
       style={{
-        opacity: off ? 0 : 1,
-        transform: off ? to : from
+        transitionProperty: "transform, opacity",
+        transitionDuration: `${duration}ms`,
+        transitionTimingFunction: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        transform: off ? to : "translateX(0%)",
+        opacity: off ? 0 : 1
       }}
     >
       {children}
@@ -328,6 +273,17 @@ function defaultGoldHoldings(): GoldHoldings {
 type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
 type AppView = "home" | "pillars";
 type ZakatMode = "guided" | "power";
+/**
+ * Guided steps:
+ * 0 intro
+ * 1 nisab basis
+ * 2 rate (mandatory based on basis)
+ * 3 cash
+ * 4 do you own gold?
+ * 5 metals (inline yes/no toggle inside this step too)
+ * 6 other assets
+ * 7 deductions -> then summary
+ */
 type GuidedStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /* =================== Page =================== */
@@ -336,6 +292,7 @@ export default function Page() {
   const VIEW_KEY = "fp_view_v1";
   const [view, setView] = usePersistedState<AppView>(VIEW_KEY, "home");
 
+  // Ensure first-ever open lands on Home (if no key present)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(VIEW_KEY);
@@ -353,6 +310,7 @@ export default function Page() {
     goldHoldings: defaultGoldHoldings(),
     goldKarat: "24k",
 
+    // legacy fields optional – kept for backward compat (safe)
     goldGrams: "",
     goldRate: "",
     goldCustomPurity: "",
@@ -374,15 +332,18 @@ export default function Page() {
     null
   );
 
+  // Power-user accordion open state (kept)
   const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
     "fp_zakat_open_section_v2",
     "nisab"
   );
 
+  // Mode + Guided flow state
   const [zakatMode, setZakatMode] = usePersistedState<ZakatMode>("fp_zakat_mode_v1", "guided");
-  const [guidedStep, setGuidedStep] = usePersistedState<GuidedStep>("fp_guided_step_v2", 0);
+  const [guidedStep, setGuidedStep] = usePersistedState<GuidedStep>("fp_guided_step_v2", 0); // bumped key
   const [ownsGold, setOwnsGold] = usePersistedState<boolean>("fp_guided_owns_gold_v1", true);
 
+  // Summary visibility (both modes)
   const [showSummary, setShowSummary] = usePersistedState<boolean>("fp_zakat_summary_v1", false);
 
   const pillar = PILLARS[active];
@@ -447,6 +408,7 @@ export default function Page() {
 
   const handleFetchOnline = async () => {
     try {
+      // mock values
       const mockGold = 14413.5;
       const mockSilver = 165.25;
 
@@ -495,6 +457,7 @@ export default function Page() {
       ? (z.goldHoldings?.custom ?? { grams: "", rate: "", purityPct: "" })
       : ((z.goldHoldings as any)?.[activeKarat] ?? { grams: "", rate: "" });
 
+  // Derived values
   const basis = z.nisabBasis;
   const manualRateValue = basis === "gold" ? (z.goldHoldings?.["24k"]?.rate ?? "") : z.silverRate;
   const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
@@ -542,23 +505,40 @@ export default function Page() {
   const otherSubtitle = otherTotal > 0 ? `₹ ${formatINR(otherTotal)}` : "Not entered";
   const deductionsSubtitle = debtsTotal > 0 ? `₹ ${formatINR(debtsTotal)}` : "None";
 
-  // Slide direction tracking (Guided + Summary)
-  const prevGuidedRef = useRef<GuidedStep>(guidedStep);
-  const guidedDir: SlideDir = guidedStep >= prevGuidedRef.current ? "forward" : "back";
-  useEffect(() => {
-    prevGuidedRef.current = guidedStep;
-  }, [guidedStep]);
-
-  const prevSummaryRef = useRef<boolean>(showSummary);
-  const summaryDir: SlideDir = showSummary && !prevSummaryRef.current ? "forward" : "back";
-  useEffect(() => {
-    prevSummaryRef.current = showSummary;
-  }, [showSummary]);
-
+  // Home -> pillars
   const goToPillar = (k: PillarKey) => {
     setActive(k);
     setView("pillars");
   };
+
+  /* ---------------- Slide direction + key ---------------- */
+
+  const prevStateRef = useRef<{
+    showSummary: boolean;
+    zakatMode: ZakatMode;
+    guidedStep: GuidedStep;
+  }>({ showSummary, zakatMode, guidedStep });
+
+  const contentKey = showSummary
+    ? "summary"
+    : zakatMode === "power"
+    ? "power"
+    : `guided-${guidedStep}`;
+
+  let contentDir: SlideDir = "forward";
+  const prev = prevStateRef.current;
+
+  if (showSummary !== prev.showSummary) {
+    contentDir = showSummary ? "forward" : "back";
+  } else if (zakatMode !== prev.zakatMode) {
+    contentDir = zakatMode === "power" ? "forward" : "back";
+  } else if (guidedStep !== prev.guidedStep) {
+    contentDir = guidedStep > prev.guidedStep ? "forward" : "back";
+  }
+
+  useEffect(() => {
+    prevStateRef.current = { showSummary, zakatMode, guidedStep };
+  }, [showSummary, zakatMode, guidedStep]);
 
   /* ---------------- HOME VIEW ---------------- */
   if (view === "home") {
@@ -621,6 +601,7 @@ export default function Page() {
           hideIcon={active === "zakat"}
         />
 
+        {/* Non-zakat pillars unchanged */}
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
             {pillar.blocks.map((b, idx) => (
@@ -668,432 +649,239 @@ export default function Page() {
               </div>
             </div>
 
-            {/* SUMMARY (used by both modes) */}
-            {showSummary ? (
-              <div className="mt-6 max-w-3xl mx-auto">
-                <SlideTransition
-                  transitionKey={`summary-${String(zakatMode)}-${String(basis)}`}
-                  direction={summaryDir}
-                >
-                  <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                    <div className="text-base font-semibold text-slate-900">Your Zakat Summary</div>
-                    <div className="mt-1 text-sm text-slate-600">
-                      This is based on the values you entered. You can edit answers or calculate again.
-                    </div>
-
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-sm text-slate-600">
-                            {zakatResult?.eligible ? "Zakat to pay" : "Zakat (not due)"}
-                          </div>
-                          <div className="mt-1 text-3xl font-semibold text-emerald-900">
-                            ₹ {formatINR(zakatResult?.eligible ? zakatResult?.zakat ?? 0 : 0)}
-                          </div>
-                          <div className="mt-2 text-xs text-slate-600">
-                            Net: ₹ {formatINR(zakatResult?.net ?? 0)} · Nisab: ₹{" "}
-                            {formatINR(zakatResult?.nisab ?? 0)} ({zakatResult?.basis ?? basis})
-                          </div>
-                          {zakatResult?.breakdown?.nisabRateMissing ? (
-                            <div className="mt-2 text-xs text-amber-700">
-                              Add a valid {zakatResult?.basis ?? basis} rate to confirm Nisab and due status.
-                            </div>
-                          ) : null}
-                        </div>
-
-                        <span
-                          className={[
-                            "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold",
-                            zakatResult?.eligible
-                              ? "border-emerald-200 bg-emerald-100 text-emerald-900"
-                              : "border-slate-200 bg-white text-slate-700"
-                          ].join(" ")}
-                        >
-                          {zakatResult?.breakdown?.nisabRateMissing
-                            ? "Needs rate"
-                            : zakatResult?.eligible
-                            ? "Due"
-                            : "Not due"}
-                        </span>
-                      </div>
-
-                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                        <div className="text-sm font-semibold text-slate-900">Breakdown</div>
-
-                        <div className="mt-3 space-y-2 text-sm">
-                          <Row label="Cash & bank" value={`₹ ${formatINR(cashTotal)}`} />
-                          <Row label="Gold (24K)" value={`₹ ${formatINR(n(h["24k"].grams) * n(h["24k"].rate))}`} />
-                          <Row label="Gold (22K)" value={`₹ ${formatINR(n(h["22k"].grams) * n(h["22k"].rate))}`} />
-                          <Row label="Gold (18K)" value={`₹ ${formatINR(n(h["18k"].grams) * n(h["18k"].rate))}`} />
-                          <Row label="Silver" value={`₹ ${formatINR(silverValueApprox)}`} />
-                          <Row label="Other assets" value={`₹ ${formatINR(otherTotal)}`} />
-                          <Row label="Deductions" value={`– ₹ ${formatINR(debtsTotal)}`} muted />
-
-                          <div className="pt-2 border-t border-slate-200" />
-
-                          <Row label="Net zakatable wealth" value={`₹ ${formatINR(zakatResult?.net ?? 0)}`} strong />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 flex items-center justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          resetZakatState();
-                          setZakatMode("guided");
-                          setGuidedStep(0);
-                        }}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
-                      >
-                        Calculate again
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowSummary(false);
-                          if (zakatMode === "guided") setGuidedStep((s) => (s === 0 ? 1 : s));
-                        }}
-                        className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
-                      >
-                        Edit answers
-                      </button>
-                    </div>
-                  </div>
-                </SlideTransition>
-
-                <BottomBar>
-                  <button
-                    type="button"
-                    onClick={handleShare}
-                    className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
-                  >
-                    Share
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetZakatState}
-                    className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
-                  >
-                    Reset
-                  </button>
-                </BottomBar>
-              </div>
-            ) : zakatMode === "power" ? (
-              /* ================= POWER USERS ================= */
-              <div className="mt-6 max-w-3xl mx-auto space-y-4">
-                {/* (Power users kept exactly as-is) */}
-                <CollapsibleCard
-                  title="Nisab & Eligibility"
-                  subtitle={nisabSubtitle}
-                  open={openSection === "nisab"}
-                  onToggle={() => toggleSection("nisab")}
-                >
-                  <div className="rounded-xl border border-slate-200 p-4">
-                    <div className="text-sm font-semibold text-slate-900">Choose your Nisab basis</div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setZ((s) => ({ ...s, nisabBasis: "silver" }))}
-                        className={[
-                          "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                          z.nisabBasis === "silver"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                        ].join(" ")}
-                      >
-                        Silver (612.36g)
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setZ((s) => ({ ...s, nisabBasis: "gold" }))}
-                        className={[
-                          "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                          z.nisabBasis === "gold"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                        ].join(" ")}
-                      >
-                        Gold (87.48g)
-                      </button>
-                    </div>
-
-                    <p className="mt-3 text-xs leading-relaxed text-slate-600">
-                      Nisab is the minimum threshold that determines whether Zakat is due. We compare your{" "}
-                      <b>total net zakatable wealth</b> against Nisab.
-                    </p>
-
-                    <div className="mt-4">
-                      <div className="text-sm font-semibold text-slate-900">
-                        {manualRateLabel} <span className="text-slate-500">(Enter today’s rate)</span>
-                      </div>
-                      <div className="mt-2">
-                        <Field
-                          label=""
-                          prefix="₹"
-                          value={manualRateValue}
-                          onChange={(v) => {
-                            if (basis === "gold") {
-                              setZ((s: any) => ({
-                                ...s,
-                                goldHoldings: {
-                                  ...(s.goldHoldings ?? defaultGoldHoldings()),
-                                  "24k": {
-                                    ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }),
-                                    rate: v
-                                  }
-                                }
-                              }));
-                            } else {
-                              setZ((s: any) => ({ ...s, silverRate: v }));
-                            }
-                          }}
-                        />
-                      </div>
-
-                      {!isRateValid ? (
-                        <div className="mt-2 text-xs text-amber-700">
-                          Please enter a valid {basis === "gold" ? "gold" : "silver"} rate to calculate.
-                        </div>
-                      ) : null}
-
-                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                        <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
-                        <span className="font-semibold">{estimatedNisab}</span>{" "}
-                        <span className="text-slate-500">
-                          (Based on {basis === "gold" ? "87.48g gold" : "612.36g silver"} × your rate)
-                        </span>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <div className="text-xs text-slate-500">
-                          Last updated:{" "}
-                          <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={handleFetchOnline}
-                          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                        >
-                          Auto-fill today's rate
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </CollapsibleCard>
-
-                {/* ...rest of power users unchanged (same as your file) ... */}
-
-                {/* POWER USERS bottom buttons */}
-                <BottomBar>
-                  <button
-                    type="button"
-                    disabled={!isRateValid}
-                    onClick={() => {
-                      if (!isRateValid) return;
-                      setShowSummary(true);
-                    }}
-                    className={[
-                      "w-full rounded-xl py-3 font-semibold transition",
-                      !isRateValid
-                        ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                        : "bg-emerald-800 hover:bg-emerald-900 text-white"
-                    ].join(" ")}
-                  >
-                    Calculate Zakat
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleShare}
-                    className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
-                  >
-                    Share
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetZakatState}
-                    className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
-                  >
-                    Reset
-                  </button>
-                </BottomBar>
-              </div>
-            ) : (
-              /* ================= GUIDED FLOW ================= */
-              <div className="mt-6 max-w-3xl mx-auto space-y-4">
-                <SlideTransition transitionKey={`guided-${guidedStep}`} direction={guidedDir}>
-                  <>
-                    {/* Intro card */}
-                    {guidedStep === 0 ? (
+            {/* MAIN CONTENT (slides horizontally for Next/Back + mode + summary) */}
+            <div className="mt-6 max-w-3xl mx-auto">
+              <SlideTransition transitionKey={contentKey} direction={contentDir}>
+                <>
+                  {/* ================= SUMMARY ================= */}
+                  {showSummary ? (
+                    <div>
                       <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                        <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                        <div className="mt-2 text-xl font-semibold text-slate-900">
-                          Let’s calculate your Zakat step-by-step
-                        </div>
-                        <div className="mt-2 text-sm text-slate-600">
-                          Answer a few quick questions, or switch to Power Users mode for a self-serve experience.
-                        </div>
-
-                        <div className="mt-4 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(1)}
-                            className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
-                          >
-                            Start
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Step 1 */}
-                    {guidedStep === 1 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                        <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                        <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab</div>
+                        <div className="text-base font-semibold text-slate-900">Your Zakat Summary</div>
                         <div className="mt-1 text-sm text-slate-600">
-                          Do you want to calculate Zakat based on silver or gold?
+                          This is based on the values you entered. You can edit answers or calculate again.
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setZ((s) => ({ ...s, nisabBasis: "silver" }))}
-                            className={[
-                              "rounded-xl border px-4 py-3 text-sm font-semibold transition",
-                              z.nisabBasis === "silver"
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                                : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                            ].join(" ")}
-                          >
-                            Silver (612.36g)
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setZ((s) => ({ ...s, nisabBasis: "gold" }))}
-                            className={[
-                              "rounded-xl border px-4 py-3 text-sm font-semibold transition",
-                              z.nisabBasis === "gold"
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                                : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                            ].join(" ")}
-                          >
-                            Gold (87.48g)
-                          </button>
-                        </div>
-
-                        <div className="mt-5 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(2)}
-                            className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Step 2 */}
-                    {guidedStep === 2 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                        <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                        <div className="mt-2 text-base font-semibold text-slate-900">2) Add today’s {basis} rate</div>
-                        <div className="mt-1 text-sm text-slate-600">This is needed to calculate the Nisab threshold.</div>
-
-                        <div className="mt-4">
-                          <div className="text-sm font-semibold text-slate-900">{manualRateLabel}</div>
-                          <div className="mt-2">
-                            <Field
-                              label=""
-                              prefix="₹"
-                              value={manualRateValue}
-                              onChange={(v) => {
-                                if (basis === "gold") {
-                                  setZ((s: any) => ({
-                                    ...s,
-                                    goldHoldings: {
-                                      ...(s.goldHoldings ?? defaultGoldHoldings()),
-                                      "24k": {
-                                        ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }),
-                                        rate: v
-                                      }
-                                    }
-                                  }));
-                                } else {
-                                  setZ((s: any) => ({ ...s, silverRate: v }));
-                                }
-                              }}
-                            />
-                          </div>
-
-                          {!isRateValid ? (
-                            <div className="mt-2 text-xs text-amber-700">
-                              Please enter a valid {basis === "gold" ? "gold" : "silver"} rate to continue.
-                            </div>
-                          ) : null}
-
-                          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                            <span className="font-semibold">Estimated Nisab Threshold:</span>{" "}
-                            <span className="font-semibold">{estimatedNisab}</span>
-                          </div>
-
-                          <div className="mt-3 flex items-center justify-between gap-3">
-                            <div className="text-xs text-slate-500">
-                              Last updated:{" "}
-                              <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
+                        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm text-slate-600">
+                                {zakatResult?.eligible ? "Zakat to pay" : "Zakat (not due)"}
+                              </div>
+                              <div className="mt-1 text-3xl font-semibold text-emerald-900">
+                                ₹ {formatINR(zakatResult?.eligible ? zakatResult?.zakat ?? 0 : 0)}
+                              </div>
+                              <div className="mt-2 text-xs text-slate-600">
+                                Net: ₹ {formatINR(zakatResult?.net ?? 0)} · Nisab: ₹{" "}
+                                {formatINR(zakatResult?.nisab ?? 0)} ({zakatResult?.basis ?? basis})
+                              </div>
+                              {zakatResult?.breakdown?.nisabRateMissing ? (
+                                <div className="mt-2 text-xs text-amber-700">
+                                  Add a valid {zakatResult?.basis ?? basis} rate to confirm Nisab and due status.
+                                </div>
+                              ) : null}
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={handleFetchOnline}
-                              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                            <span
+                              className={[
+                                "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold",
+                                zakatResult?.eligible
+                                  ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+                                  : "border-slate-200 bg-white text-slate-700"
+                              ].join(" ")}
                             >
-                              Auto-fill today’s rate
-                            </button>
+                              {zakatResult?.breakdown?.nisabRateMissing
+                                ? "Needs rate"
+                                : zakatResult?.eligible
+                                ? "Due"
+                                : "Not due"}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="text-sm font-semibold text-slate-900">Breakdown</div>
+
+                            <div className="mt-3 space-y-2 text-sm">
+                              <Row label="Cash & bank" value={`₹ ${formatINR(cashTotal)}`} />
+                              <Row
+                                label="Gold (24K)"
+                                value={`₹ ${formatINR(n(h["24k"].grams) * n(h["24k"].rate))}`}
+                              />
+                              <Row
+                                label="Gold (22K)"
+                                value={`₹ ${formatINR(n(h["22k"].grams) * n(h["22k"].rate))}`}
+                              />
+                              <Row
+                                label="Gold (18K)"
+                                value={`₹ ${formatINR(n(h["18k"].grams) * n(h["18k"].rate))}`}
+                              />
+                              <Row label="Silver" value={`₹ ${formatINR(silverValueApprox)}`} />
+                              <Row label="Other assets" value={`₹ ${formatINR(otherTotal)}`} />
+                              <Row label="Deductions" value={`– ₹ ${formatINR(debtsTotal)}`} muted />
+
+                              <div className="pt-2 border-t border-slate-200" />
+
+                              <Row label="Net zakatable wealth" value={`₹ ${formatINR(zakatResult?.net ?? 0)}`} strong />
+                            </div>
                           </div>
                         </div>
 
                         <div className="mt-5 flex items-center justify-between gap-3">
                           <button
                             type="button"
-                            onClick={() => setGuidedStep(1)}
-                            className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                            onClick={() => {
+                              resetZakatState();
+                              setZakatMode("guided");
+                              setGuidedStep(0);
+                            }}
+                            className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
                           >
-                            Back
+                            Calculate again
                           </button>
+
                           <button
                             type="button"
-                            disabled={!isRateValid}
-                            onClick={() => setGuidedStep(3)}
-                            className={[
-                              "rounded-xl px-5 py-2.5 text-sm font-semibold transition",
-                              !isRateValid
-                                ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                                : "bg-emerald-800 hover:bg-emerald-900 text-white"
-                            ].join(" ")}
+                            onClick={() => {
+                              setShowSummary(false);
+                              if (zakatMode === "guided") setGuidedStep((s) => (s === 0 ? 1 : s));
+                            }}
+                            className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
                           >
-                            Next
+                            Edit answers
                           </button>
                         </div>
                       </div>
-                    ) : null}
 
-                    {/* Step 3 */}
-                    {guidedStep === 3 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                        <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                        <div className="mt-2 text-base font-semibold text-slate-900">3) Add Cash in Hand and bank</div>
-                        <div className="mt-1 text-sm text-slate-600">
-                          Add the money you currently have available including cash in hand and funds in your bank accounts.
+                      {/* Sticky buttons below summary: Share + Reset */}
+                      <BottomBar>
+                        <button
+                          type="button"
+                          onClick={handleShare}
+                          className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                        >
+                          Share
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetZakatState}
+                          className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
+                        >
+                          Reset
+                        </button>
+                      </BottomBar>
+                    </div>
+                  ) : zakatMode === "power" ? (
+                    /* ================= POWER USERS ================= */
+                    <div className="space-y-4">
+                      <CollapsibleCard
+                        title="Nisab & Eligibility"
+                        subtitle={nisabSubtitle}
+                        open={openSection === "nisab"}
+                        onToggle={() => toggleSection("nisab")}
+                      >
+                        <div className="rounded-xl border border-slate-200 p-4">
+                          <div className="text-sm font-semibold text-slate-900">Choose your Nisab basis</div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setZ((s) => ({ ...s, nisabBasis: "silver" }))}
+                              className={[
+                                "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                                z.nisabBasis === "silver"
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                              ].join(" ")}
+                            >
+                              Silver (612.36g)
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setZ((s) => ({ ...s, nisabBasis: "gold" }))}
+                              className={[
+                                "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                                z.nisabBasis === "gold"
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                              ].join(" ")}
+                            >
+                              Gold (87.48g)
+                            </button>
+                          </div>
+
+                          <p className="mt-3 text-xs leading-relaxed text-slate-600">
+                            Nisab is the minimum threshold that determines whether Zakat is due. We compare your{" "}
+                            <b>total net zakatable wealth</b> against Nisab.
+                          </p>
+
+                          <div className="mt-4">
+                            <div className="text-sm font-semibold text-slate-900">
+                              {manualRateLabel} <span className="text-slate-500">(Enter today’s rate)</span>
+                            </div>
+                            <div className="mt-2">
+                              <Field
+                                label=""
+                                prefix="₹"
+                                value={manualRateValue}
+                                onChange={(v) => {
+                                  if (basis === "gold") {
+                                    setZ((s: any) => ({
+                                      ...s,
+                                      goldHoldings: {
+                                        ...(s.goldHoldings ?? defaultGoldHoldings()),
+                                        "24k": {
+                                          ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }),
+                                          rate: v
+                                        }
+                                      }
+                                    }));
+                                  } else {
+                                    setZ((s: any) => ({ ...s, silverRate: v }));
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            {!isRateValid ? (
+                              <div className="mt-2 text-xs text-amber-700">
+                                Please enter a valid {basis === "gold" ? "gold" : "silver"} rate to calculate.
+                              </div>
+                            ) : null}
+
+                            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                              <span className="font-semibold">Estimated Nisab threshold:</span>{" "}
+                              <span className="font-semibold">{estimatedNisab}</span>{" "}
+                              <span className="text-slate-500">
+                                (Based on {basis === "gold" ? "87.48g gold" : "612.36g silver"} × your rate)
+                              </span>
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between gap-3">
+                              <div className="text-xs text-slate-500">
+                                Last updated:{" "}
+                                <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleFetchOnline}
+                                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                              >
+                                Auto-fill today's rate
+                              </button>
+                            </div>
+                          </div>
                         </div>
+                      </CollapsibleCard>
 
-                        <div className="mt-4 space-y-3">
+                      <CollapsibleCard
+                        title="Cash & Bank"
+                        subtitle={cashSubtitle}
+                        open={openSection === "cash"}
+                        onToggle={() => toggleSection("cash")}
+                      >
+                        <div className="space-y-3">
                           <Field
                             label="Cash in hand"
                             hint="Money you currently have available."
@@ -1109,240 +897,107 @@ export default function Page() {
                             onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
                           />
                         </div>
+                      </CollapsibleCard>
 
-                        <div className="mt-5 flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(2)}
-                            className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
-                          >
-                            Back
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(4)}
-                            className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
+                      <CollapsibleCard
+                        title="Gold & Silver"
+                        subtitle={metalsSubtitle}
+                        open={openSection === "metals"}
+                        onToggle={() => toggleSection("metals")}
+                      >
+                        <div className="space-y-3">
+                          <div>
+                            <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold Purity</div>
 
-                    {/* Step 4 */}
-                    {guidedStep === 4 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                        <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                        <div className="mt-2 text-base font-semibold text-slate-900">4) Do you own gold?</div>
-                        <div className="mt-1 text-sm text-slate-600">
-                          If you don’t own gold, we will skip gold inputs and only ask about silver.
-                        </div>
+                            <div className="mt-2 grid grid-cols-4 gap-2">
+                              {(["24k", "22k", "18k", "custom"] as const).map((k) => (
+                                <button
+                                  key={k}
+                                  type="button"
+                                  onClick={() => setActiveKarat(k)}
+                                  className={[
+                                    "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                                    String(activeKarat).toLowerCase() === k
+                                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                                  ].join(" ")}
+                                >
+                                  {k === "custom" ? "Custom" : k.toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setOwnsGold(true)}
-                            className={[
-                              "rounded-xl border px-4 py-3 text-sm font-semibold transition",
-                              ownsGold
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                                : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                            ].join(" ")}
-                          >
-                            Yes
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setOwnsGold(false)}
-                            className={[
-                              "rounded-xl border px-4 py-3 text-sm font-semibold transition",
-                              !ownsGold
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                                : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                            ].join(" ")}
-                          >
-                            No
-                          </button>
-                        </div>
+                            <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                              Add the grams you own and the per gram rate for each purity.
+                            </p>
+                          </div>
 
-                        <div className="mt-5 flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(3)}
-                            className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
-                          >
-                            Back
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(5)}
-                            className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
+                          <div className="rounded-xl border border-slate-200 bg-white p-3">
+                            <div className="text-xs font-semibold tracking-wide text-slate-500">
+                              {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
+                            </div>
 
-                    {/* Step 5 */}
-                    {guidedStep === 5 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                        <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                        <div className="mt-2 text-base font-semibold text-slate-900">5) Add Gold and Silver Details</div>
-                        <div className="mt-1 text-sm text-slate-600">
-                          Add details of the gold and silver you own. You can toggle gold on or off here at any time.
-                        </div>
+                            {activeKarat === "custom" && (
+                              <div className="mt-3">
+                                <Field
+                                  label="Custom purity (%)"
+                                  hint="Example: 91.6 for 22k, 75 for 18k"
+                                  suffix="%"
+                                  value={(activeHolding as any).purityPct ?? ""}
+                                  onChange={(v) => updateHolding("custom", { purityPct: v })}
+                                />
+                              </div>
+                            )}
 
-                        <div className="mt-4 space-y-4">
-                          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                            <div className="text-xs font-semibold text-slate-700">Do you own gold?</div>
+                            <div className="mt-3 space-y-3">
+                              <Field
+                                label="Gold (grams)"
+                                hint="Weight of gold you own for this purity."
+                                suffix="g"
+                                value={(activeHolding as any).grams ?? ""}
+                                onChange={(v) => updateHolding(activeKarat, { grams: v })}
+                              />
 
-                            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-                              <button
-                                type="button"
-                                onClick={() => setOwnsGold(true)}
-                                aria-pressed={ownsGold}
-                                className={[
-                                  "px-3 py-1.5 text-xs font-semibold rounded-md transition",
-                                  ownsGold
-                                    ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                                    : "text-slate-700 hover:bg-slate-50"
-                                ].join(" ")}
-                              >
-                                Yes
-                              </button>
+                              <Field
+                                label="Gold rate (₹/g)"
+                                hint="Current market price per gram for this purity."
+                                prefix="₹"
+                                value={(activeHolding as any).rate ?? ""}
+                                onChange={(v) => updateHolding(activeKarat, { rate: v })}
+                              />
+                            </div>
 
-                              <button
-                                type="button"
-                                onClick={() => setOwnsGold(false)}
-                                aria-pressed={!ownsGold}
-                                className={[
-                                  "px-3 py-1.5 text-xs font-semibold rounded-md transition",
-                                  !ownsGold
-                                    ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                                    : "text-slate-700 hover:bg-slate-50"
-                                ].join(" ")}
-                              >
-                                No
-                              </button>
+                            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                              Tip: Select the gold purity (24K, 22K, or 18K), then enter the grams and rate for the
+                              selected purity.
                             </div>
                           </div>
 
-                          {/* Gold conditional */}
-                          {ownsGold ? (
-                            <div className="space-y-3">
-                              <div>
-                                <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold Purity</div>
-                                <div className="mt-2 grid grid-cols-4 gap-2">
-                                  {(["24k", "22k", "18k", "custom"] as const).map((k) => (
-                                    <button
-                                      key={k}
-                                      type="button"
-                                      onClick={() => setActiveKarat(k)}
-                                      className={[
-                                        "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                                        String(activeKarat).toLowerCase() === k
-                                          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                                          : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                                      ].join(" ")}
-                                    >
-                                      {k === "custom" ? "Custom" : k.toUpperCase()}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
+                          <Field
+                            label="Silver (grams)"
+                            hint="Weight of silver you own."
+                            suffix="g"
+                            value={z.silverGrams}
+                            onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
+                          />
 
-                              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                                <div className="text-xs font-semibold tracking-wide text-slate-500">
-                                  {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
-                                </div>
-
-                                {activeKarat === "custom" && (
-                                  <div className="mt-3">
-                                    <Field
-                                      label="Custom purity (%)"
-                                      hint="Example: 91.6 for 22k, 75 for 18k"
-                                      suffix="%"
-                                      value={(activeHolding as any).purityPct ?? ""}
-                                      onChange={(v) => updateHolding("custom", { purityPct: v })}
-                                    />
-                                  </div>
-                                )}
-
-                                <div className="mt-3 space-y-3">
-                                  <Field
-                                    label="Gold (grams)"
-                                    hint="Weight of gold you own for this purity."
-                                    suffix="g"
-                                    value={(activeHolding as any).grams ?? ""}
-                                    onChange={(v) => updateHolding(activeKarat, { grams: v })}
-                                  />
-
-                                  <Field
-                                    label="Gold rate (₹/g)"
-                                    hint="Current market price per gram for this purity."
-                                    prefix="₹"
-                                    value={(activeHolding as any).rate ?? ""}
-                                    onChange={(v) => updateHolding(activeKarat, { rate: v })}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                              Gold inputs skipped. You can switch “Do you own gold?” to Yes anytime.
-                            </div>
-                          )}
-
-                          {/* Silver always */}
-                          <div className="space-y-3">
-                            <Field
-                              label="Silver (grams)"
-                              hint="Weight of silver you own."
-                              suffix="g"
-                              value={z.silverGrams}
-                              onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
-                            />
-
-                            <Field
-                              label="Silver rate (₹/g)"
-                              hint="Current market price per gram."
-                              prefix="₹"
-                              value={z.silverRate}
-                              onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
-                            />
-                          </div>
+                          <Field
+                            label="Silver rate (₹/g)"
+                            hint="Current market price per gram."
+                            prefix="₹"
+                            value={z.silverRate}
+                            onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
+                          />
                         </div>
+                      </CollapsibleCard>
 
-                        <div className="mt-5 flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(4)}
-                            className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
-                          >
-                            Back
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(6)}
-                            className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Step 6 */}
-                    {guidedStep === 6 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                        <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                        <div className="mt-2 text-base font-semibold text-slate-900">6) Add Other Asset Details</div>
-                        <div className="mt-1 text-sm text-slate-600">
-                          Add investments, business assets, and money lent.
-                        </div>
-
-                        <div className="mt-4 space-y-3">
+                      <CollapsibleCard
+                        title="Other Assets"
+                        subtitle={otherSubtitle}
+                        open={openSection === "other"}
+                        onToggle={() => toggleSection("other")}
+                      >
+                        <div className="space-y-3">
                           <Field
                             label="Investments / savings"
                             hint="Stocks, mutual funds, savings plans, etc."
@@ -1365,36 +1020,15 @@ export default function Page() {
                             onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
                           />
                         </div>
+                      </CollapsibleCard>
 
-                        <div className="mt-5 flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(5)}
-                            className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
-                          >
-                            Back
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(7)}
-                            className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Step 7 */}
-                    {guidedStep === 7 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-                        <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                        <div className="mt-2 text-base font-semibold text-slate-900">7) Add Deduction Details</div>
-                        <div className="mt-1 text-sm text-slate-600">
-                          Add debts, loans or liabilities you must repay soon.
-                        </div>
-
-                        <div className="mt-4 space-y-3">
+                      <CollapsibleCard
+                        title="Deductions"
+                        subtitle={deductionsSubtitle}
+                        open={openSection === "deductions"}
+                        onToggle={() => toggleSection("deductions")}
+                      >
+                        <div className="space-y-3">
                           <Field
                             label="Debts & liabilities"
                             hint="Bills or loans you must repay soon."
@@ -1403,46 +1037,587 @@ export default function Page() {
                             onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
                           />
                         </div>
+                      </CollapsibleCard>
 
-                        <div className="mt-5 flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setGuidedStep(6)}
-                            className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
-                          >
-                            Back
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowSummary(true)}
-                            className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
-                          >
-                            Calculate Zakat
-                          </button>
+                      <Accordion title="How Zakat is calculated">
+                        <div className="text-sm text-slate-600 leading-relaxed space-y-2">
+                          <p>
+                            Zakat is estimated at <b>2.5%</b> of your <b>net zakatable wealth</b>.
+                          </p>
+                          <p className="text-sm">
+                            <b>Net</b> = (Cash + Bank + Gold value + Silver value + Investments + Business assets + Money
+                            lent) − Debts
+                          </p>
+                          <p>
+                            Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver
+                            rate).
+                          </p>
                         </div>
-                      </div>
-                    ) : null}
-                  </>
-                </SlideTransition>
+                      </Accordion>
 
-                <BottomBar>
-                  <button
-                    type="button"
-                    onClick={handleShare}
-                    className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
-                  >
-                    Share
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetZakatState}
-                    className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
-                  >
-                    Reset
-                  </button>
-                </BottomBar>
-              </div>
-            )}
+                      {/* POWER USERS bottom buttons: Calculate Zakat + Share + Reset */}
+                      <BottomBar>
+                        <button
+                          type="button"
+                          disabled={!isRateValid}
+                          onClick={() => {
+                            if (!isRateValid) return;
+                            setShowSummary(true);
+                          }}
+                          className={[
+                            "w-full rounded-xl py-3 font-semibold transition",
+                            !isRateValid
+                              ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                              : "bg-emerald-800 hover:bg-emerald-900 text-white"
+                          ].join(" ")}
+                        >
+                          Calculate Zakat
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleShare}
+                          className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                        >
+                          Share
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetZakatState}
+                          className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
+                        >
+                          Reset
+                        </button>
+                      </BottomBar>
+                    </div>
+                  ) : (
+                    /* ================= GUIDED FLOW ================= */
+                    <div className="space-y-4">
+                      {/* Intro card */}
+                      {guidedStep === 0 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                          <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                          <div className="mt-2 text-xl font-semibold text-slate-900">
+                            Let’s calculate your Zakat step-by-step
+                          </div>
+                          <div className="mt-2 text-sm text-slate-600">
+                            Answer a few quick questions, or switch to Power Users mode for a self-serve experience.
+                          </div>
+
+                          <div className="mt-4 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(1)}
+                              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                            >
+                              Start
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Step 1: Nisab basis */}
+                      {guidedStep === 1 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                          <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                          <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab </div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            Do you want to calculate Zakat based on silver or gold?
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setZ((s) => ({ ...s, nisabBasis: "silver" }))}
+                              className={[
+                                "rounded-xl border px-4 py-3 text-sm font-semibold transition",
+                                z.nisabBasis === "silver"
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                              ].join(" ")}
+                            >
+                              Silver (612.36g)
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setZ((s) => ({ ...s, nisabBasis: "gold" }))}
+                              className={[
+                                "rounded-xl border px-4 py-3 text-sm font-semibold transition",
+                                z.nisabBasis === "gold"
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                              ].join(" ")}
+                            >
+                              Gold (87.48g)
+                            </button>
+                          </div>
+
+                          <div className="mt-5 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(2)}
+                              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Step 2: Rate (mandatory) */}
+                      {guidedStep === 2 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                          <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                          <div className="mt-2 text-base font-semibold text-slate-900">2) Add today’s {basis} rate</div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            This is needed to calculate the Nisab threshold.
+                          </div>
+
+                          <div className="mt-4">
+                            <div className="text-sm font-semibold text-slate-900">{manualRateLabel}</div>
+                            <div className="mt-2">
+                              <Field
+                                label=""
+                                prefix="₹"
+                                value={manualRateValue}
+                                onChange={(v) => {
+                                  if (basis === "gold") {
+                                    setZ((s: any) => ({
+                                      ...s,
+                                      goldHoldings: {
+                                        ...(s.goldHoldings ?? defaultGoldHoldings()),
+                                        "24k": {
+                                          ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }),
+                                          rate: v
+                                        }
+                                      }
+                                    }));
+                                  } else {
+                                    setZ((s: any) => ({ ...s, silverRate: v }));
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            {!isRateValid ? (
+                              <div className="mt-2 text-xs text-amber-700">
+                                Please enter a valid {basis === "gold" ? "gold" : "silver"} rate to continue.
+                              </div>
+                            ) : null}
+
+                            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                              <span className="font-semibold">Estimated Nisab Threshold:</span>{" "}
+                              <span className="font-semibold">{estimatedNisab}</span>
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between gap-3">
+                              <div className="text-xs text-slate-500">
+                                Last updated:{" "}
+                                <span className="font-medium text-slate-700">{formatDateTime(lastFetchedAt)}</span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleFetchOnline}
+                                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                              >
+                                Auto-fill today’s rate
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mt-5 flex items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(1)}
+                              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!isRateValid}
+                              onClick={() => setGuidedStep(3)}
+                              className={[
+                                "rounded-xl px-5 py-2.5 text-sm font-semibold transition",
+                                !isRateValid
+                                  ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                                  : "bg-emerald-800 hover:bg-emerald-900 text-white"
+                              ].join(" ")}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Step 3: Cash */}
+                      {guidedStep === 3 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                          <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                          <div className="mt-2 text-base font-semibold text-slate-900">
+                            3) Add Cash in Hand and bank
+                          </div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            Add the money you currently have available including cash in hand and funds in your bank
+                            accounts.
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            <Field
+                              label="Cash in hand"
+                              hint="Money you currently have available."
+                              prefix="₹"
+                              value={z.cash}
+                              onChange={(v) => setZ((s: any) => ({ ...s, cash: v }))}
+                            />
+                            <Field
+                              label="Cash in bank"
+                              hint="Total balance across your bank accounts"
+                              prefix="₹"
+                              value={z.bank}
+                              onChange={(v) => setZ((s: any) => ({ ...s, bank: v }))}
+                            />
+                          </div>
+
+                          <div className="mt-5 flex items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(2)}
+                              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(4)}
+                              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Step 4: Do you own gold? */}
+                      {guidedStep === 4 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                          <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                          <div className="mt-2 text-base font-semibold text-slate-900">4) Do you own gold?</div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            If you don’t own gold, we willl skip gold inputs and only ask about silver.
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setOwnsGold(true)}
+                              className={[
+                                "rounded-xl border px-4 py-3 text-sm font-semibold transition",
+                                ownsGold
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                              ].join(" ")}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOwnsGold(false)}
+                              className={[
+                                "rounded-xl border px-4 py-3 text-sm font-semibold transition",
+                                !ownsGold
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                              ].join(" ")}
+                            >
+                              No
+                            </button>
+                          </div>
+
+                          <div className="mt-5 flex items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(3)}
+                              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(5)}
+                              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Step 5: Metals + inline toggle */}
+                      {guidedStep === 5 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                          <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                          <div className="mt-2 text-base font-semibold text-slate-900">5) Add Gold and Silver Details</div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            Add details of the gold and silver you own. You can toggle gold on or off here at any time.
+                          </div>
+
+                          <div className="mt-4 space-y-4">
+                            {/* Inline toggle (compact segmented control) */}
+                            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <div className="text-xs font-semibold text-slate-700">Do you own gold?</div>
+
+                              <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+                                <button
+                                  type="button"
+                                  onClick={() => setOwnsGold(true)}
+                                  aria-pressed={ownsGold}
+                                  className={[
+                                    "px-3 py-1.5 text-xs font-semibold rounded-md transition",
+                                    ownsGold
+                                      ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                      : "text-slate-700 hover:bg-slate-50"
+                                  ].join(" ")}
+                                >
+                                  Yes
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setOwnsGold(false)}
+                                  aria-pressed={!ownsGold}
+                                  className={[
+                                    "px-3 py-1.5 text-xs font-semibold rounded-md transition",
+                                    !ownsGold
+                                      ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                      : "text-slate-700 hover:bg-slate-50"
+                                  ].join(" ")}
+                                >
+                                  No
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Gold section (conditional) */}
+                            {ownsGold ? (
+                              <div className="space-y-3">
+                                <div>
+                                  <div className="text-xs font-semibold tracking-wide text-slate-500">
+                                    Select Gold Purity
+                                  </div>
+                                  <div className="mt-2 grid grid-cols-4 gap-2">
+                                    {(["24k", "22k", "18k", "custom"] as const).map((k) => (
+                                      <button
+                                        key={k}
+                                        type="button"
+                                        onClick={() => setActiveKarat(k)}
+                                        className={[
+                                          "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                                          String(activeKarat).toLowerCase() === k
+                                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                                        ].join(" ")}
+                                      >
+                                        {k === "custom" ? "Custom" : k.toUpperCase()}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                  <div className="text-xs font-semibold tracking-wide text-slate-500">
+                                    {activeKarat === "custom" ? "CUSTOM GOLD" : `${activeKarat.toUpperCase()} GOLD`}
+                                  </div>
+
+                                  {activeKarat === "custom" && (
+                                    <div className="mt-3">
+                                      <Field
+                                        label="Custom purity (%)"
+                                        hint="Example: 91.6 for 22k, 75 for 18k"
+                                        suffix="%"
+                                        value={(activeHolding as any).purityPct ?? ""}
+                                        onChange={(v) => updateHolding("custom", { purityPct: v })}
+                                      />
+                                    </div>
+                                  )}
+
+                                  <div className="mt-3 space-y-3">
+                                    <Field
+                                      label="Gold (grams)"
+                                      hint="Weight of gold you own for this purity."
+                                      suffix="g"
+                                      value={(activeHolding as any).grams ?? ""}
+                                      onChange={(v) => updateHolding(activeKarat, { grams: v })}
+                                    />
+
+                                    <Field
+                                      label="Gold rate (₹/g)"
+                                      hint="Current market price per gram for this purity."
+                                      prefix="₹"
+                                      value={(activeHolding as any).rate ?? ""}
+                                      onChange={(v) => updateHolding(activeKarat, { rate: v })}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                                Gold inputs skipped. You can switch “Do you own gold?” to Yes anytime.
+                              </div>
+                            )}
+
+                            {/* Silver (always shown) */}
+                            <div className="space-y-3">
+                              <Field
+                                label="Silver (grams)"
+                                hint="Weight of silver you own."
+                                suffix="g"
+                                value={z.silverGrams}
+                                onChange={(v) => setZ((s: any) => ({ ...s, silverGrams: v }))}
+                              />
+
+                              <Field
+                                label="Silver rate (₹/g)"
+                                hint="Current market price per gram."
+                                prefix="₹"
+                                value={z.silverRate}
+                                onChange={(v) => setZ((s: any) => ({ ...s, silverRate: v }))}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-5 flex items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(4)}
+                              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(6)}
+                              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Step 6: Other */}
+                      {guidedStep === 6 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                          <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                          <div className="mt-2 text-base font-semibold text-slate-900">6) Add Other Asset Details</div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            Add investments, business assets, and money lent.
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            <Field
+                              label="Investments / savings"
+                              hint="Stocks, mutual funds, savings plans, etc."
+                              prefix="₹"
+                              value={z.investments}
+                              onChange={(v) => setZ((s: any) => ({ ...s, investments: v }))}
+                            />
+                            <Field
+                              label="Business assets"
+                              hint="Inventory, goods held for sale, business cash, receivables."
+                              prefix="₹"
+                              value={z.businessAssets}
+                              onChange={(v) => setZ((s: any) => ({ ...s, businessAssets: v }))}
+                            />
+                            <Field
+                              label="Money lent to others"
+                              hint="Money you expect to receive back."
+                              prefix="₹"
+                              value={z.moneyLent}
+                              onChange={(v) => setZ((s: any) => ({ ...s, moneyLent: v }))}
+                            />
+                          </div>
+
+                          <div className="mt-5 flex items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(5)}
+                              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(7)}
+                              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Step 7: Deductions + Calculate */}
+                      {guidedStep === 7 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
+                          <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
+                          <div className="mt-2 text-base font-semibold text-slate-900">7) Add Deduction Details</div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            Add debts, loans or liabilities you must repay soon.
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            <Field
+                              label="Debts & liabilities"
+                              hint="Bills or loans you must repay soon."
+                              prefix="₹"
+                              value={z.debts}
+                              onChange={(v) => setZ((s: any) => ({ ...s, debts: v }))}
+                            />
+                          </div>
+
+                          <div className="mt-5 flex items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setGuidedStep(6)}
+                              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowSummary(true)}
+                              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                            >
+                              Calculate Zakat
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* GUIDED FLOW bottom buttons: Share + Reset */}
+                      <BottomBar>
+                        <button
+                          type="button"
+                          onClick={handleShare}
+                          className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                        >
+                          Share
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetZakatState}
+                          className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
+                        >
+                          Reset
+                        </button>
+                      </BottomBar>
+                    </div>
+                  )}
+                </>
+              </SlideTransition>
+            </div>
           </>
         )}
       </section>
