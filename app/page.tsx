@@ -1,39 +1,22 @@
 "use client";
 
-import GuidedZakatV1 from "@/components/GuidedZakatV1";
 import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import HomePage from "@/components/HomePage";
 import PillarTabs from "@/components/PillarTabs";
 import PillarHeader from "@/components/PillarHeader";
 import Card from "@/components/Card";
-import Field from "@/components/Field";
 import Accordion from "@/components/Accordion";
 import usePersistedState from "@/lib/usePersistedState";
 import { PILLARS, PillarKey } from "@/lib/pillars";
-import { calculateZakat, ZakatForm, GoldKarat, GoldHoldings } from "@/lib/zakat";
+import { calculateZakat, ZakatForm, GoldHoldings } from "@/lib/zakat";
+import GuidedZakatV1 from "@/components/GuidedZakatV1";
 
 function formatINR(n: number) {
   try {
     return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
   } catch {
     return String(Math.round(n));
-  }
-}
-
-function formatDateTime(ts?: number | null) {
-  if (!ts) return "—";
-  try {
-    const d = new Date(ts);
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mi = String(d.getMinutes()).padStart(2, "0");
-    const ss = String(d.getSeconds()).padStart(2, "0");
-    return `${dd}/${mm}/${yyyy}, ${hh}:${mi}:${ss}`;
-  } catch {
-    return "—";
   }
 }
 
@@ -65,57 +48,6 @@ function HelpFab() {
   );
 }
 
-/* ---------- Collapsible card helper ---------- */
-function CollapsibleCard({
-  title,
-  subtitle,
-  open,
-  onToggle,
-  children
-}: {
-  title: string;
-  subtitle: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card title="">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={[
-          "group w-full text-left rounded-2xl transition",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        ].join(" ")}
-        aria-expanded={open}
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-lg font-semibold text-slate-900">{title}</div>
-            <div className="mt-1 text-sm text-slate-500">{subtitle}</div>
-          </div>
-
-          <span
-            className={[
-              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
-              "border-slate-200 bg-white text-slate-700",
-              "group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:text-emerald-900",
-              "group-active:scale-[0.98] group-active:bg-emerald-100",
-              "shadow-sm"
-            ].join(" ")}
-            aria-hidden="true"
-          >
-            {open ? "˄" : "˅"}
-          </span>
-        </div>
-      </button>
-
-      {open && <div className="mt-4">{children}</div>}
-    </Card>
-  );
-}
-
 /* ---------- Default gold holdings helper ---------- */
 function defaultGoldHoldings(): GoldHoldings {
   return {
@@ -126,7 +58,6 @@ function defaultGoldHoldings(): GoldHoldings {
   };
 }
 
-type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
 type AppView = "home" | "pillars";
 
 export default function Page() {
@@ -179,11 +110,6 @@ export default function Page() {
   );
 
   const [resultOpen, setResultOpen] = usePersistedState<boolean>("fp_result_open_v1", false);
-
-  const [openSection, setOpenSection] = usePersistedState<ZakatSection>(
-    "fp_zakat_open_section_v2",
-    "nisab"
-  );
 
   const prevEligibleRef = useRef<boolean>(false);
   const prevActiveRef = useRef<PillarKey>(active);
@@ -238,7 +164,6 @@ export default function Page() {
     });
     setLastFetchedAt(null);
     setResultOpen(false);
-    setOpenSection("nisab");
   };
 
   const handleDownloadPDF = () => {
@@ -288,113 +213,12 @@ export default function Page() {
     }
   };
 
-  const handleFetchOnline = async () => {
-    try {
-      const mockGold = 14413.5;
-      const mockSilver = 165.25;
-
-      if (z.nisabBasis === "gold") {
-        setZ((s) => ({
-          ...s,
-          goldHoldings: {
-            ...(s.goldHoldings ?? defaultGoldHoldings()),
-            "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: mockGold }
-          }
-        }));
-      } else {
-        setZ((s) => ({ ...s, silverRate: mockSilver }));
-      }
-
-      setLastFetchedAt(Date.now());
-    } catch {
-      alert("Could not fetch rates. You can still enter the rate manually.");
-    }
-  };
-
   const basis = z.nisabBasis;
-  const manualRateValue = basis === "gold" ? (z.goldHoldings?.["24k"]?.rate ?? "") : z.silverRate;
-  const manualRateLabel = basis === "gold" ? "Gold rate (₹/g)" : "Silver rate (₹/g)";
-
-  const estimatedNisab =
-    zakatResult && zakatResult.nisab > 0 ? `₹ ${formatINR(zakatResult.nisab)}` : "₹ —";
-
   const trayHeading = zakatResult?.breakdown?.nisabRateMissing
     ? `Add a ${zakatResult?.basis ?? basis} rate to check Nisab`
     : zakatResult?.eligible
     ? "Zakat is due"
     : "Zakat is not due";
-
-  const cashTotal = n(z.cash) + n(z.bank);
-
-  const h = z.goldHoldings ?? defaultGoldHoldings();
-  const goldValueApprox =
-    n(h["24k"].grams) * n(h["24k"].rate) * 1.0 +
-    n(h["22k"].grams) * n(h["22k"].rate) * 0.916 +
-    n(h["18k"].grams) * n(h["18k"].rate) * 0.75 +
-    n(h.custom.grams) * n(h.custom.rate) * Math.max(0, Math.min(1, n(h.custom.purityPct) / 100));
-
-  const silverValueApprox = n(z.silverGrams) * n(z.silverRate);
-  const metalsTotal = goldValueApprox + silverValueApprox;
-
-  const otherTotal = n(z.investments) + n(z.businessAssets) + n(z.moneyLent);
-  const debtsTotal = n(z.debts);
-
-  const nisabSubtitle =
-    zakatResult?.breakdown?.nisabRateMissing
-      ? `Add ${basis} rate`
-      : estimatedNisab !== "₹ —"
-      ? `Threshold: ${estimatedNisab}`
-      : "Not entered";
-
-  const cashSubtitle = cashTotal > 0 ? `₹ ${formatINR(cashTotal)}` : "Not entered";
-  const metalsSubtitle =
-    metalsTotal > 0
-      ? `₹ ${formatINR(metalsTotal)}`
-      : goldValueApprox > 0 ||
-        silverValueApprox > 0 ||
-        n(h["24k"].rate) > 0 ||
-        n(h["22k"].rate) > 0 ||
-        n(h["18k"].rate) > 0 ||
-        n(h.custom.rate) > 0 ||
-        n(z.silverRate) > 0
-      ? "Entered"
-      : "Not entered";
-
-  const otherSubtitle = otherTotal > 0 ? `₹ ${formatINR(otherTotal)}` : "Not entered";
-  const deductionsSubtitle = debtsTotal > 0 ? `₹ ${formatINR(debtsTotal)}` : "None";
-
-  const toggleSection = (section: Exclude<ZakatSection, null>) => {
-    setOpenSection((curr) => (curr === section ? null : section));
-  };
-
-  const activeKarat: GoldKarat = (z.goldKarat ?? "24k") as GoldKarat;
-
-  const setActiveKarat = (k: GoldKarat) => {
-    setZ((s: any) => ({ ...s, goldKarat: k }));
-  };
-
-  const updateHolding = (k: GoldKarat, patch: Partial<any>) => {
-    setZ((s: any) => {
-      const curr = (s.goldHoldings ?? defaultGoldHoldings()) as GoldHoldings;
-
-      if (k === "custom") {
-        return {
-          ...s,
-          goldHoldings: { ...curr, custom: { ...curr.custom, ...patch } }
-        };
-      }
-
-      return {
-        ...s,
-        goldHoldings: { ...curr, [k]: { ...(curr as any)[k], ...patch } }
-      };
-    });
-  };
-
-  const activeHolding =
-    activeKarat === "custom"
-      ? (z.goldHoldings?.custom ?? { grams: "", rate: "", purityPct: "" })
-      : ((z.goldHoldings as any)?.[activeKarat] ?? { grams: "", rate: "" });
 
   /* When selecting from homepage, switch view + set active */
   const goToPillar = (k: PillarKey) => {
@@ -407,11 +231,7 @@ export default function Page() {
     return (
       <main className="min-h-screen">
         <HelpFab />
-        {/* make HomePage call goToPillar (so it navigates into pillars view and sets active) */}
-        <HomePage
-          onExplore={() => setView("pillars")}
-          onSelectPillar={(k) => goToPillar(k)}
-        />
+        <HomePage onExplore={() => setView("pillars")} onSelectPillar={(k) => goToPillar(k)} />
       </main>
     );
   }
@@ -452,9 +272,7 @@ export default function Page() {
 
       <header className="container-page pt-10 pb-4 text-center">
         <div className="flex items-center justify-center max-w-5xl mx-auto px-4">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-            Five Pillars of Islam
-          </h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
         </div>
 
         <div className="mt-6">
@@ -471,29 +289,37 @@ export default function Page() {
         />
 
         {active !== "zakat" ? (
-  <div className="mt-6 space-y-5">
-    {pillar.blocks.map((b, idx) => (
-      <Card key={idx} title={b.title}>
-        {b.content}
-      </Card>
-    ))}
-  </div>
-) : (
-  <>
-    <GuidedZakatV1 z={z} setZ={setZ} traySpacerHeight={TRAY_SPACER_HEIGHT} />
+          <div className="mt-6 space-y-5">
+            {pillar.blocks.map((b, idx) => (
+              <Card key={idx} title={b.title}>
+                {b.content}
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <>
+            {/* ✅ Conversational / guided Zakat flow */}
+            <GuidedZakatV1 z={z} setZ={setZ} traySpacerHeight={TRAY_SPACER_HEIGHT} />
 
-    {/* ✅ Keep your existing fixed result tray exactly as-is below */}
-    <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
-      {/* ... your existing tray code unchanged ... */}
-    </div>
-  </>
-)}
-
-
-              <div style={{ height: TRAY_SPACER_HEIGHT }} />
+            {/* Keep this (optional) explainer */}
+            <div className="mt-4">
+              <Accordion title="How Zakat is calculated">
+                <div className="text-sm text-slate-600 leading-relaxed space-y-2">
+                  <p>
+                    Zakat is estimated at <b>2.5%</b> of your <b>net zakatable wealth</b>.
+                  </p>
+                  <p className="text-sm">
+                    <b>Net</b> = (Cash + Bank + Gold value + Silver value + Investments + Business assets + Money lent) −
+                    Debts
+                  </p>
+                  <p>
+                    Zakat is <b>due</b> if Net is ≥ the <b>Nisab</b> threshold (based on your selected gold/silver rate).
+                  </p>
+                </div>
+              </Accordion>
             </div>
 
-            {/* Result tray pinned bottom */}
+            {/* Result tray pinned bottom (unchanged) */}
             <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
               <div
                 className="container-page pb-4"
@@ -505,15 +331,7 @@ export default function Page() {
                       <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
                         <button
                           type="button"
-                          onClick={() => {
-                            setResultOpen((v) => {
-                              const next = !v;
-                              if (next && zakatResult?.breakdown?.nisabRateMissing) {
-                                setOpenSection("metals");
-                              }
-                              return next;
-                            });
-                          }}
+                          onClick={() => setResultOpen((v) => !v)}
                           className="w-full text-left"
                           aria-expanded={resultOpen}
                         >
