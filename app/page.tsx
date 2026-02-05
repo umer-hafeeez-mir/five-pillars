@@ -1172,36 +1172,41 @@ export default function Page() {
                     </div>
 
                     <div className="mt-4 space-y-4">
-                      {/* Inline toggle */}
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="text-xs font-semibold tracking-wide text-slate-500">Do you own gold?</div>
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setOwnsGold(true)}
-                            className={[
-                              "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                              ownsGold
-                                ? "border-emerald-300 bg-white text-emerald-900"
-                                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                            ].join(" ")}
-                          >
-                            Yes
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setOwnsGold(false)}
-                            className={[
-                              "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-                              !ownsGold
-                                ? "border-emerald-300 bg-white text-emerald-900"
-                                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                            ].join(" ")}
-                          >
-                            No
-                          </button>
+                         {/* Inline toggle (compact segmented control) */}
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <div className="text-xs font-semibold text-slate-700">Do you own gold?</div>
+                        
+                          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+                            <button
+                              type="button"
+                              onClick={() => setOwnsGold(true)}
+                              aria-pressed={ownsGold}
+                              className={[
+                                "px-3 py-1.5 text-xs font-semibold rounded-md transition",
+                                ownsGold
+                                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              ].join(" ")}
+                            >
+                              Yes
+                            </button>
+                        
+                            <button
+                              type="button"
+                              onClick={() => setOwnsGold(false)}
+                              aria-pressed={!ownsGold}
+                              className={[
+                                "px-3 py-1.5 text-xs font-semibold rounded-md transition",
+                                !ownsGold
+                                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              ].join(" ")}
+                            >
+                              No
+                            </button>
+                          </div>
                         </div>
-                      </div>
+
 
                       {/* Gold section (conditional) */}
                       {ownsGold ? (
