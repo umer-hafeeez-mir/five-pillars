@@ -72,13 +72,7 @@ function Hr() {
   return <div className="my-3 h-px bg-slate-200/70" />;
 }
 
-function Callout({
-  title,
-  children
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Callout({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
       <div className="text-xs font-semibold tracking-widest text-emerald-900/70">{title}</div>
@@ -88,7 +82,6 @@ function Callout({
 }
 
 export default function HelpPage() {
-  // Accordion behavior: only one open at a time
   const sections: Section[] = useMemo(
     () => [
       {
@@ -103,45 +96,73 @@ export default function HelpPage() {
 
             <Callout title="WHAT THIS APP DOES">
               <ul className="list-disc pl-5 space-y-1">
-                <li>A simple, modern companion app to help you learn the Five Pillars of Islam—in clear, bite-sized sections.</li>
+                <li>
+                  A simple, modern companion app to help you learn the Five Pillars of Islam—in clear, bite-sized
+                  sections.
+                </li>
                 <li>Helps you calculate Zakat using either a step-by-step Guided Flow or a faster Power Users mode.</li>
                 <li>Explains the key events and rituals during Hajj, so you know what happens, when, and why it matters.</li>
-                <li>Provides a curated collection of duas for daily life and for Hajj, with quick access when you need them most.</li>
-                <li>Keeps your experience private and lightweight—no login required, and your entered values stay on your device (until you reset).</li>
+                <li>
+                  Provides a curated collection of duas for daily life and for Hajj, with quick access when you need them
+                  most.
+                </li>
+                <li>
+                  Keeps your experience private and lightweight—no login required, and your entered values stay on your
+                  device (until you reset).
+                </li>
               </ul>
             </Callout>
-           <Callout title="PRIVACY">
+
+            <Callout title="PRIVACY">
               <ul className="list-disc pl-5 space-y-1">
-                <li>Your entries are stored <b>only on your device</b> (local storage) so you don’t lose progress.</li>
+                <li>
+                  Your entries are stored <b>only on your device</b> (local storage) so you don’t lose progress.
+                </li>
                 <li>No login required. No tracking.</li>
-                <li>Using <b>Reset</b> clears stored inputs for this app on your device.</li>
+                <li>
+                  Using <b>Reset</b> clears stored inputs for this app on your device.
+                </li>
               </ul>
             </Callout>
 
             <Hr />
 
             <div className="text-sm font-semibold text-slate-900">Add to Home Screen</div>
-            <div className="mt-1 text-slate-600">
-              Install the app on your phone for a more “native” feel.
-            </div>
+            <div className="mt-1 text-slate-600">Install the app on your phone for a more “native” feel.</div>
 
             <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="text-sm font-semibold text-slate-900">iPhone / iPad (Safari)</div>
               <ol className="mt-2 list-decimal pl-5 space-y-1 text-slate-700">
-                <li>Open the app in <b>Safari</b>.</li>
-                <li>Tap the <b>Share</b> icon (square with arrow).</li>
-                <li>Tap <b>Add to Home Screen</b>.</li>
-                <li>Rename if you want, then tap <b>Add</b>.</li>
+                <li>
+                  Open the app in <b>Safari</b>.
+                </li>
+                <li>
+                  Tap the <b>Share</b> icon (square with arrow).
+                </li>
+                <li>
+                  Tap <b>Add to Home Screen</b>.
+                </li>
+                <li>
+                  Rename if you want, then tap <b>Add</b>.
+                </li>
               </ol>
             </div>
 
             <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="text-sm font-semibold text-slate-900">Android (Chrome)</div>
               <ol className="mt-2 list-decimal pl-5 space-y-1 text-slate-700">
-                <li>Open the app in <b>Chrome</b>.</li>
-                <li>Tap the <b>⋮</b> menu (top-right).</li>
-                <li>Tap <b>Add to Home screen</b> or <b>Install app</b>.</li>
-                <li>Confirm <b>Add / Install</b>.</li>
+                <li>
+                  Open the app in <b>Chrome</b>.
+                </li>
+                <li>
+                  Tap the <b>⋮</b> menu (top-right).
+                </li>
+                <li>
+                  Tap <b>Add to Home screen</b> or <b>Install app</b>.
+                </li>
+                <li>
+                  Confirm <b>Add / Install</b>.
+                </li>
               </ol>
             </div>
 
@@ -207,7 +228,9 @@ export default function HelpPage() {
               This app helps you estimate:
               <ul className="mt-2 list-disc pl-5 space-y-1">
                 <li>Your net zakatable wealth</li>
-                <li>Whether you meet <b>Nisab</b></li>
+                <li>
+                  Whether you meet <b>Nisab</b>
+                </li>
                 <li>An estimated Zakat amount (2.5%) when applicable</li>
               </ul>
             </div>
@@ -218,15 +241,23 @@ export default function HelpPage() {
             <div className="mt-1 text-slate-600">
               <b>Nisab</b> is the minimum threshold that determines whether Zakat is due. You can choose your basis:
               <ul className="mt-2 list-disc pl-5 space-y-1">
-                <li><b>Silver Nisab</b> (612.36g)</li>
-                <li><b>Gold Nisab</b> (87.48g)</li>
+                <li>
+                  <b>Silver Nisab</b> (612.36g)
+                </li>
+                <li>
+                  <b>Gold Nisab</b> (87.48g)
+                </li>
               </ul>
             </div>
 
             <Callout title="IMPORTANT ABOUT RATES">
               <ul className="list-disc pl-5 space-y-1">
-                <li>If your Nisab basis is <b>Gold</b>, the <b>gold rate</b> is required to calculate Nisab.</li>
-                <li>If your Nisab basis is <b>Silver</b>, the <b>silver rate</b> is required to calculate Nisab.</li>
+                <li>
+                  If your Nisab basis is <b>Gold</b>, the <b>gold rate</b> is required to calculate Nisab.
+                </li>
+                <li>
+                  If your Nisab basis is <b>Silver</b>, the <b>silver rate</b> is required to calculate Nisab.
+                </li>
                 <li>You can enter rates manually or use the app’s auto-fill option (if available).</li>
               </ul>
             </Callout>
@@ -254,9 +285,7 @@ export default function HelpPage() {
             <Hr />
 
             <div className="text-sm font-semibold text-slate-900">Guided Flow</div>
-            <div className="mt-1 text-slate-600">
-              Guided Flow is step-by-step and designed to feel calm and easy.
-            </div>
+            <div className="mt-1 text-slate-600">Guided Flow is step-by-step and designed to feel calm and easy.</div>
             <ul className="mt-2 list-disc pl-5 space-y-1 text-slate-700">
               <li>Choose Nisab (silver or gold)</li>
               <li>Add today’s rate (required based on your Nisab choice)</li>
@@ -267,9 +296,7 @@ export default function HelpPage() {
               <li>Deductions → Calculate</li>
             </ul>
 
-            <div className="mt-3 text-slate-600">
-              Use Guided Flow if you want to ensure you don’t miss anything.
-            </div>
+            <div className="mt-3 text-slate-600">Use Guided Flow if you want to ensure you don’t miss anything.</div>
 
             <Hr />
 
@@ -285,9 +312,7 @@ export default function HelpPage() {
               <li>Deductions</li>
             </ul>
 
-            <div className="mt-3 text-slate-600">
-              Use Power Users if you already have your totals and rates ready.
-            </div>
+            <div className="mt-3 text-slate-600">Use Power Users if you already have your totals and rates ready.</div>
 
             <Hr />
 
@@ -362,43 +387,38 @@ export default function HelpPage() {
         )
       },
       {
-  id: "feedback",
-  title: "7) Feedback",
-  body: (
-    <>
-      <div className="text-slate-600">
-        Want to suggest an improvement, report a bug, or request a feature?
-      </div>
+        id: "feedback",
+        title: "7) Feedback",
+        body: (
+          <>
+            <div className="text-slate-600">Want to suggest an improvement, report a bug, or request a feature?</div>
 
-      <Callout title="THE BEST KIND OF FEEDBACK">
-        <ul className="list-disc pl-5 space-y-1">
-          <li>What you were trying to do</li>
-          <li>What you expected to happen</li>
-          <li>What actually happened</li>
-          <li>A screenshot (if possible)</li>
-        </ul>
-      </Callout>
+            <Callout title="THE BEST KIND OF FEEDBACK">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>What you were trying to do</li>
+                <li>What you expected to happen</li>
+                <li>What actually happened</li>
+                <li>A screenshot (if possible)</li>
+              </ul>
+            </Callout>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        {/* Primary feedback action */}
-        <a
-          href="mailto:umerhafeez.mir@outlook.com?subject=Five%20Pillars%20App%20Feedback"
-          className="inline-flex items-center justify-center rounded-xl
-                     bg-emerald-800 hover:bg-emerald-900
-                     text-white px-4 py-2 text-sm font-semibold
-                     transition shadow-sm"
-        >
-          Send feedback via email
-        </a>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <a
+                href="mailto:umerhafeez.mir@outlook.com?subject=Five%20Pillars%20App%20Feedback"
+                className="inline-flex items-center justify-center rounded-xl
+                           bg-emerald-800 hover:bg-emerald-900
+                           text-white px-4 py-2 text-sm font-semibold
+                           transition shadow-sm"
+              >
+                Send feedback via email
+              </a>
 
-        {/* Secondary hint */}
-        <span className="text-xs text-slate-500">
-        
-        </span>
-      </div>
-    </>
-  )
-},{
+              <span className="text-xs text-slate-500"></span>
+            </div>
+          </>
+        )
+      },
+      {
         id: "about",
         title: "8) About",
         body: (
@@ -416,10 +436,18 @@ export default function HelpPage() {
 
             <Callout title="DESIGN PRINCIPLES">
               <ul className="list-disc pl-5 space-y-1">
-                <li><b>Human language</b> over formal jargon</li>
-                <li><b>Clarity</b> over complexity</li>
-                <li><b>Privacy first</b> (your data stays on your device)</li>
-                <li><b>Guided when you want it</b>, fast when you need it</li>
+                <li>
+                  <b>Human language</b> over formal jargon
+                </li>
+                <li>
+                  <b>Clarity</b> over complexity
+                </li>
+                <li>
+                  <b>Privacy first</b> (your data stays on your device)
+                </li>
+                <li>
+                  <b>Guided when you want it</b>, fast when you need it
+                </li>
               </ul>
             </Callout>
 
@@ -448,22 +476,42 @@ export default function HelpPage() {
     []
   );
 
+  // Collapsed by default
   const [openId, setOpenId] = useState<string>("");
 
   return (
     <main className="min-h-screen bg-[#F7F9F8]">
       <div className="h-px bg-slate-200/70" />
 
-      <div className="container-page pt-10 pb-14">
+      <div className="container-page pt-8 pb-14">
         <div className="mx-auto max-w-3xl">
-          <div className="text-center">
+          {/* ✅ Top "Back to app" button (same as About section) */}
+          <div className="mb-4">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Back to app
+            </Link>
+          </div>
 
+          <div className="text-center">
             <h1 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
               Help Documentation
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Tap a section to expand.
-            </p>
+            <p className="mt-2 text-sm text-slate-600">Tap a section to expand.</p>
           </div>
 
           <div className="mt-8 space-y-4">
