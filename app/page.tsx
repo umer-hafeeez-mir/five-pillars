@@ -44,6 +44,61 @@ function n(v: any) {
   return Number.isFinite(num) ? num : 0;
 }
 
+/* ---------------- EAP Banner ---------------- */
+function EarlyAccessBanner() {
+  const KEY = "fp_early_access_dismissed_v1";
+  const [hidden, setHidden] = React.useState(true);
+
+  React.useEffect(() => {
+    try {
+      setHidden(localStorage.getItem(KEY) === "1");
+    } catch {
+      setHidden(false);
+    }
+  }, []);
+
+  if (hidden) return null;
+
+  return (
+    <div className="mt-4 max-w-3xl mx-auto">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3 soft-shadow">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold tracking-widest text-amber-900/70">
+              EARLY ACCESS
+            </div>
+            <div className="mt-1 text-sm text-slate-700">
+              Zakat calculation is available. Hajj and Sawm sections are still being refined.
+              <Link
+                href="/help#feedback"
+                className="ml-2 font-semibold text-amber-900 underline underline-offset-2 hover:opacity-80"
+              >
+                Share feedback
+              </Link>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.setItem(KEY, "1");
+              } catch {}
+              setHidden(true);
+            }}
+            className="shrink-0 rounded-xl border border-amber-200 bg-white px-3 py-1.5
+                       text-xs font-semibold text-amber-900 hover:bg-amber-50 transition"
+            aria-label="Dismiss early access notice"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 /* ---------------- UI bits ---------------- */
 
 function HelpFab() {
