@@ -393,24 +393,8 @@ export default function HelpPage() {
 
         {/* Secondary hint */}
         <span className="text-xs text-slate-500">
-          Opens your email app
+        
         </span>
-      </div>
-
-      <div className="mt-4 text-slate-600">
-        Prefer a form instead of email? You can also link a feedback form below.
-      </div>
-
-      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-        <div className="font-semibold text-slate-900">Tip</div>
-        <div className="mt-1">
-          You can replace or add a form link (Google Form / Typeform):
-          <div className="mt-2">
-            <span className="font-mono text-xs">
-              https://forms.gle/your-form-id
-            </span>
-          </div>
-        </div>
       </div>
     </>
   )
@@ -464,7 +448,7 @@ export default function HelpPage() {
     []
   );
 
-  const [openId, setOpenId] = useState<string>(sections[0]?.id ?? "getting-started");
+  const [openId, setOpenId] = useState<string>("");
 
   return (
     <main className="min-h-screen bg-[#F7F9F8]">
