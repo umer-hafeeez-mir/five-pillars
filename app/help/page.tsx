@@ -103,21 +103,14 @@ export default function HelpPage() {
 
             <Callout title="WHAT THIS APP DOES">
               <ul className="list-disc pl-5 space-y-1">
-                <li>Explains each pillar in short, easy sections.</li>
-                <li>Provides a Zakat calculator with Guided Flow and Power Users mode.</li>
-                <li>Shows a clear summary: Net wealth, Nisab, and whether Zakat is due.</li>
+                <li>A simple, modern companion app to help you learn the Five Pillars of Islam—in clear, bite-sized sections.</li>
+                <li>Helps you calculate Zakat using either a step-by-step Guided Flow or a faster Power Users mode.</li>
+                <li>Explains the key events and rituals during Hajj, so you know what happens, when, and why it matters.</li>
+                <li>Provides a curated collection of duas for daily life and for Hajj, with quick access when you need them most.</li>
+                <li>Keeps your experience private and lightweight—no login required, and your entered values stay on your device (until you reset).</li>
               </ul>
             </Callout>
-
-            <Callout title="HOW IT WORKS (PLAIN ENGLISH)">
-              <ul className="list-disc pl-5 space-y-1">
-                <li>You choose a pillar from the tabs.</li>
-                <li>For Zakat, you answer step-by-step (Guided) or enter everything quickly (Power Users).</li>
-                <li>The app computes an estimate and shows a breakdown.</li>
-              </ul>
-            </Callout>
-
-            <Callout title="PRIVACY">
+           <Callout title="PRIVACY">
               <ul className="list-disc pl-5 space-y-1">
                 <li>Your entries are stored <b>only on your device</b> (local storage) so you don’t lose progress.</li>
                 <li>No login required. No tracking.</li>
