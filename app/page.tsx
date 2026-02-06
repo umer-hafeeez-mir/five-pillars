@@ -424,10 +424,28 @@ export default function Page() {
 
       <section className="container-page pb-24">
         <PillarHeader
-          title={active === "zakat" ? "Calculate Zakat" : pillar.title}
-          subtitle={pillar.subtitle}
-          icon={pillar.icon}
-          hideIcon={active === "zakat"}
+  title={
+    active === "zakat" ? (
+      <div className="flex items-center justify-center gap-3">
+        <span>Calculate Zakat</span>
+
+        <span
+          className={[
+            "inline-flex items-center rounded-full px-2.5 py-1",
+            "text-[11px] font-semibold tracking-wide",
+            "border border-amber-200 bg-amber-50 text-amber-900"
+          ].join(" ")}
+        >
+          In Early Access
+        </span>
+      </div>
+    ) : (
+      pillar.title
+    )
+  }
+  subtitle={pillar.subtitle}
+  icon={pillar.icon}
+  hideIcon={active === "zakat"}
         />
 
         {/* Non-zakat pillars unchanged */}
