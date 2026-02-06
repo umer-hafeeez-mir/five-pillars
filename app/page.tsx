@@ -485,6 +485,16 @@ export default function Page() {
           hideIcon={active === "zakat"}
         />
 
+        {/* Early Access banner — Zakat only */}
+            <EarlyAccessBanner />
+            
+            {/* Guided / Power users toggle */}
+            <div className="mt-4 flex items-center justify-center">
+              <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                ...
+              </div>
+            </div>
+
         {/* Non-zakat pillars unchanged */}
         {active !== "zakat" ? (
           <div className="mt-6 space-y-5">
