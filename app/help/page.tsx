@@ -1,148 +1,498 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation";
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+type Section = {
+  id: string;
+  title: string;
+  body: React.ReactNode;
+};
 
-function BackButton() {
-  const router = useRouter();
-
+function Chevron({ open }: { open: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={() => {
-        // If user came from inside the app, go back.
-        // If they opened /help directly (no history), fall back to home.
-        if (typeof window !== "undefined" && window.history.length > 1) {
-          router.back();
-        } else {
-          router.push("/");
-        }
-      }}
-      aria-label="Back"
-      title="Back"
+    <span
+      aria-hidden="true"
       className={[
-        "inline-flex h-9 w-9 items-center justify-center rounded-full",
-        "border border-slate-200 bg-white/90 backdrop-blur",
-        "text-slate-700 hover:text-emerald-900 hover:bg-white",
-        "shadow-sm transition",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+        "inline-flex h-9 w-9 items-center justify-center rounded-full border transition",
+        "border-slate-200 bg-white text-slate-700",
+        open ? "rotate-180" : "rotate-0"
       ].join(" ")}
     >
-      <span className="text-lg leading-none">←</span>
-    </button>
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  open,
+  onToggle,
+  children
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white soft-shadow overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className={[
+          "w-full text-left px-5 py-4",
+          "flex items-center justify-between gap-4",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+          "transition"
+        ].join(" ")}
+      >
+        <div className="text-base sm:text-lg font-semibold text-slate-900">{title}</div>
+        <Chevron open={open} />
+      </button>
+
+      <div
+        className={[
+          "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        ].join(" ")}
+      >
+        <div className="overflow-hidden">
+          <div className="px-5 pb-5 pt-0 text-sm text-slate-700 leading-relaxed">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Hr() {
+  return <div className="my-3 h-px bg-slate-200/70" />;
+}
+
+function Callout({
+  title,
+  children
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+      <div className="text-xs font-semibold tracking-widest text-emerald-900/70">{title}</div>
+      <div className="mt-2 text-sm text-slate-700 leading-relaxed">{children}</div>
+    </div>
   );
 }
 
 export default function HelpPage() {
+  // Accordion behavior: only one open at a time
+  const sections: Section[] = useMemo(
+    () => [
+      {
+        id: "getting-started",
+        title: "1) Getting Started",
+        body: (
+          <>
+            <div className="text-slate-600">
+              <b>Five Pillars</b> is a simple companion app that helps you learn about the Five Pillars of Islam—and
+              estimate Zakat based on the values you enter.
+            </div>
+
+            <Callout title="WHAT THIS APP DOES">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Explains each pillar in short, easy sections.</li>
+                <li>Provides a Zakat calculator with Guided Flow and Power Users mode.</li>
+                <li>Shows a clear summary: Net wealth, Nisab, and whether Zakat is due.</li>
+              </ul>
+            </Callout>
+
+            <Callout title="HOW IT WORKS (PLAIN ENGLISH)">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>You choose a pillar from the tabs.</li>
+                <li>For Zakat, you answer step-by-step (Guided) or enter everything quickly (Power Users).</li>
+                <li>The app computes an estimate and shows a breakdown.</li>
+              </ul>
+            </Callout>
+
+            <Callout title="PRIVACY">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Your entries are stored <b>only on your device</b> (local storage) so you don’t lose progress.</li>
+                <li>No login required. No tracking.</li>
+                <li>Using <b>Reset</b> clears stored inputs for this app on your device.</li>
+              </ul>
+            </Callout>
+
+            <Hr />
+
+            <div className="text-sm font-semibold text-slate-900">Add to Home Screen</div>
+            <div className="mt-1 text-slate-600">
+              Install the app on your phone for a more “native” feel.
+            </div>
+
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-900">iPhone / iPad (Safari)</div>
+              <ol className="mt-2 list-decimal pl-5 space-y-1 text-slate-700">
+                <li>Open the app in <b>Safari</b>.</li>
+                <li>Tap the <b>Share</b> icon (square with arrow).</li>
+                <li>Tap <b>Add to Home Screen</b>.</li>
+                <li>Rename if you want, then tap <b>Add</b>.</li>
+              </ol>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-900">Android (Chrome)</div>
+              <ol className="mt-2 list-decimal pl-5 space-y-1 text-slate-700">
+                <li>Open the app in <b>Chrome</b>.</li>
+                <li>Tap the <b>⋮</b> menu (top-right).</li>
+                <li>Tap <b>Add to Home screen</b> or <b>Install app</b>.</li>
+                <li>Confirm <b>Add / Install</b>.</li>
+              </ol>
+            </div>
+
+            <div className="mt-3 text-xs text-slate-500">
+              If you don’t see the option: try the correct browser (Safari on iOS, Chrome on Android) and refresh once.
+            </div>
+          </>
+        )
+      },
+      {
+        id: "shahada",
+        title: "2) Shahada",
+        body: (
+          <>
+            <div className="text-slate-600">
+              <b>Shahada</b> is the declaration of faith and the foundation of Islam.
+            </div>
+
+            <Callout title="YOU’LL FIND">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>What the Shahada means</li>
+                <li>Why it matters</li>
+                <li>How it connects to the other pillars</li>
+              </ul>
+            </Callout>
+
+            <div className="mt-3 text-slate-600">
+              <b>Key idea:</b> The Shahada is the core belief that shapes everything else—Salah, Zakat, Sawm, and Hajj.
+            </div>
+          </>
+        )
+      },
+      {
+        id: "salah",
+        title: "3) Salah",
+        body: (
+          <>
+            <div className="text-slate-600">
+              <b>Salah</b> is the daily prayer—an anchor for faith, discipline, and connection.
+            </div>
+
+            <Callout title="YOU’LL FIND">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>What Salah is</li>
+                <li>Why it is performed daily</li>
+                <li>How it shapes routine and mindfulness</li>
+              </ul>
+            </Callout>
+
+            <div className="mt-3 text-slate-600">
+              If you’re learning, focus first on <b>consistency and intention</b>—perfection comes with time.
+            </div>
+          </>
+        )
+      },
+      {
+        id: "zakat",
+        title: "4) Zakat",
+        body: (
+          <>
+            <div className="text-slate-600">
+              <b>Zakat</b> is an annual obligation on eligible wealth, meant to purify wealth and support those in need.
+              This app helps you estimate:
+              <ul className="mt-2 list-disc pl-5 space-y-1">
+                <li>Your net zakatable wealth</li>
+                <li>Whether you meet <b>Nisab</b></li>
+                <li>An estimated Zakat amount (2.5%) when applicable</li>
+              </ul>
+            </div>
+
+            <Hr />
+
+            <div className="text-sm font-semibold text-slate-900">What is Nisab?</div>
+            <div className="mt-1 text-slate-600">
+              <b>Nisab</b> is the minimum threshold that determines whether Zakat is due. You can choose your basis:
+              <ul className="mt-2 list-disc pl-5 space-y-1">
+                <li><b>Silver Nisab</b> (612.36g)</li>
+                <li><b>Gold Nisab</b> (87.48g)</li>
+              </ul>
+            </div>
+
+            <Callout title="IMPORTANT ABOUT RATES">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>If your Nisab basis is <b>Gold</b>, the <b>gold rate</b> is required to calculate Nisab.</li>
+                <li>If your Nisab basis is <b>Silver</b>, the <b>silver rate</b> is required to calculate Nisab.</li>
+                <li>You can enter rates manually or use the app’s auto-fill option (if available).</li>
+              </ul>
+            </Callout>
+
+            <Hr />
+
+            <div className="text-sm font-semibold text-slate-900">How Zakat is calculated</div>
+            <div className="mt-1 text-slate-600">
+              <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                <div>
+                  <b>Net zakatable wealth</b> =
+                </div>
+                <div className="mt-1">
+                  (Cash + Bank + Gold + Silver + Investments + Business assets + Money lent) − Debts
+                </div>
+                <div className="mt-3">
+                  Zakat is <b>due</b> if Net ≥ <b>Nisab</b>
+                </div>
+                <div className="mt-1">
+                  If due, estimated Zakat = <b>2.5% × Net</b>
+                </div>
+              </div>
+            </div>
+
+            <Hr />
+
+            <div className="text-sm font-semibold text-slate-900">Guided Flow</div>
+            <div className="mt-1 text-slate-600">
+              Guided Flow is step-by-step and designed to feel calm and easy.
+            </div>
+            <ul className="mt-2 list-disc pl-5 space-y-1 text-slate-700">
+              <li>Choose Nisab (silver or gold)</li>
+              <li>Add today’s rate (required based on your Nisab choice)</li>
+              <li>Cash & bank</li>
+              <li>Do you own gold? (Yes/No)</li>
+              <li>Gold & silver (gold can be toggled on/off inline)</li>
+              <li>Other assets</li>
+              <li>Deductions → Calculate</li>
+            </ul>
+
+            <div className="mt-3 text-slate-600">
+              Use Guided Flow if you want to ensure you don’t miss anything.
+            </div>
+
+            <Hr />
+
+            <div className="text-sm font-semibold text-slate-900">Power Users</div>
+            <div className="mt-1 text-slate-600">
+              Power Users mode lets you enter everything quickly using expandable sections.
+            </div>
+            <ul className="mt-2 list-disc pl-5 space-y-1 text-slate-700">
+              <li>Nisab & Eligibility</li>
+              <li>Cash & Bank</li>
+              <li>Gold & Silver</li>
+              <li>Other Assets</li>
+              <li>Deductions</li>
+            </ul>
+
+            <div className="mt-3 text-slate-600">
+              Use Power Users if you already have your totals and rates ready.
+            </div>
+
+            <Hr />
+
+            <div className="text-sm font-semibold text-slate-900">Summary screen</div>
+            <div className="mt-1 text-slate-600">
+              The summary shows:
+              <ul className="mt-2 list-disc pl-5 space-y-1">
+                <li>Zakat amount (or “not due”)</li>
+                <li>Net wealth</li>
+                <li>Nisab threshold and basis</li>
+                <li>A breakdown of what was included</li>
+              </ul>
+            </div>
+          </>
+        )
+      },
+      {
+        id: "sawm",
+        title: "5) Sawm",
+        body: (
+          <>
+            <div className="text-slate-600">
+              <b>Sawm</b> refers to fasting in Ramadan—an act of worship, discipline, and empathy.
+            </div>
+
+            <Callout title="YOU’LL FIND">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>What Sawm is</li>
+                <li>The purpose and spirit behind fasting</li>
+                <li>A simple overview of what fasting involves</li>
+              </ul>
+            </Callout>
+
+            <div className="mt-3 text-slate-600">
+              <b>Key idea:</b> Sawm isn’t only about food—it’s about self-control, gratitude, and character.
+            </div>
+          </>
+        )
+      },
+      {
+        id: "hajj",
+        title: "6) Hajj",
+        body: (
+          <>
+            <div className="text-slate-600">
+              <b>Hajj</b> is the pilgrimage to Makkah—an obligation once in a lifetime for those who are physically and
+              financially able.
+            </div>
+
+            <Callout title="YOU’LL FIND">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>The meaning and purpose of Hajj</li>
+                <li>A structured overview of the journey</li>
+                <li>Guidance for what each tab/screen covers</li>
+              </ul>
+            </Callout>
+
+            <Hr />
+
+            <div className="text-sm font-semibold text-slate-900">How to read the Hajj screens</div>
+            <div className="mt-1 text-slate-600">
+              For each sub-screen, we keep it consistent:
+              <ul className="mt-2 list-disc pl-5 space-y-1">
+                <li>What it is</li>
+                <li>Why it matters</li>
+                <li>What you should do</li>
+                <li>Common confusion points</li>
+                <li>A quick tip</li>
+              </ul>
+            </div>
+          </>
+        )
+      },
+      {
+        id: "feedback",
+        title: "7) Feedback",
+        body: (
+          <>
+            <div className="text-slate-600">
+              Want to suggest an improvement, report a bug, or request a feature?
+            </div>
+
+            <Callout title="THE BEST KIND OF FEEDBACK">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>What you were trying to do</li>
+                <li>What you expected to happen</li>
+                <li>What actually happened</li>
+                <li>A screenshot (if possible)</li>
+              </ul>
+            </Callout>
+
+            <div className="mt-3 text-slate-600">
+              If your build includes an in-app feedback link, use that. Otherwise, you can add one here:
+            </div>
+
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <div className="font-semibold text-slate-900">Tip</div>
+              <div className="mt-1">
+                Add a feedback form link (Google Form / Typeform) or a mailto link:
+                <div className="mt-2">
+                  Example:{" "}
+                  <span className="font-mono text-xs">
+                    mailto:your-email?subject=Zakat%20App%20Feedback
+                  </span>
+                </div>
+              </div>
+            </div>
+          </>
+        )
+      },
+      {
+        id: "about",
+        title: "8) About",
+        body: (
+          <>
+            <div className="text-slate-600">
+              Built by <b>Umer Hafeez Mir</b>.
+            </div>
+
+            <Callout title="WHY THIS APP EXISTS">
+              <div>
+                A calm, modern way to learn the Five Pillars—and make Zakat estimation feel simple, transparent, and
+                approachable.
+              </div>
+            </Callout>
+
+            <Callout title="DESIGN PRINCIPLES">
+              <ul className="list-disc pl-5 space-y-1">
+                <li><b>Human language</b> over formal jargon</li>
+                <li><b>Clarity</b> over complexity</li>
+                <li><b>Privacy first</b> (your data stays on your device)</li>
+                <li><b>Guided when you want it</b>, fast when you need it</li>
+              </ul>
+            </Callout>
+
+            <div className="mt-3 text-slate-600">
+              If you find something confusing, that’s on the app—not on you. Feedback helps make it better for everyone.
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Link
+                href="/"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition"
+              >
+                Back to app
+              </Link>
+              <Link
+                href="/help#getting-started"
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 transition"
+              >
+                Getting started
+              </Link>
+            </div>
+          </>
+        )
+      }
+    ],
+    []
+  );
+
+  const [openId, setOpenId] = useState<string>(sections[0]?.id ?? "getting-started");
+
   return (
     <main className="min-h-screen bg-[#F7F9F8]">
-      <div className="container-page py-10">
-        <div className="max-w-3xl mx-auto rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
-          {/* Top row: Back */}
-          <div className="flex items-center justify-between">
-            <BackButton />
-            <div className="text-xs text-slate-500">Help</div>
-          </div>
+      <div className="h-px bg-slate-200/70" />
 
-          <header className="mt-4 mb-4">
-            <h1 className="text-2xl font-semibold text-slate-900">Help & Guides</h1>
+      <div className="container-page pt-10 pb-14">
+        <div className="mx-auto max-w-3xl">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold tracking-widest text-slate-500">
+              HELP
+            </div>
+
+            <h1 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
+              Help & Documentation
+            </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Everything in one place — getting started, Zakat calculations, privacy, and methodology.
+              Tap a section to expand. Only one section stays open at a time.
             </p>
-
-            <nav className="mt-4">
-              <ul className="flex flex-wrap gap-3 text-xs">
-                <li>
-                  <a href="#getting-started" className="text-emerald-800 font-semibold hover:underline">
-                    Getting started
-                  </a>
-                </li>
-                <li>
-                  <a href="#zakat" className="text-emerald-800 font-semibold hover:underline">
-                    Zakat
-                  </a>
-                </li>
-                <li>
-                  <a href="#nisab" className="text-emerald-800 font-semibold hover:underline">
-                    Nisab
-                  </a>
-                </li>
-                <li>
-                  <a href="#sources" className="text-emerald-800 font-semibold hover:underline">
-                    Sources
-                  </a>
-                </li>
-                <li>
-                  <a href="#privacy" className="text-emerald-800 font-semibold hover:underline">
-                    Privacy
-                  </a>
-                </li>
-                <li>
-                  <a href="#feedback" className="text-emerald-800 font-semibold hover:underline">
-                    Feedback
-                  </a>
-                </li>
-              </ul>
-            </nav>
-          </header>
-
-          <div className="mt-6 space-y-10 text-sm text-slate-700 leading-relaxed">
-            <section id="getting-started">
-              <h2 className="text-base font-semibold text-slate-900">Getting started</h2>
-              <p className="mt-2">
-                Use the homepage to explore the Five Pillars or jump straight into any pillar. Your inputs are saved
-                locally on your device.
-              </p>
-            </section>
-
-            <section id="zakat">
-              <h2 className="text-base font-semibold text-slate-900">Zakat calculator</h2>
-              <p className="mt-2">
-                The Zakat calculator estimates whether Zakat is due and how much to pay based on the information you
-                provide.
-              </p>
-
-              <p className="mt-2">
-                <b>Net zakatable wealth</b> = (Cash + Bank + Gold + Silver + Investments + Business assets + Money lent)
-                − Debts
-              </p>
-
-              <p className="mt-2">
-                When eligible, Zakat is calculated at <b>2.5%</b>.
-              </p>
-            </section>
-
-            <section id="nisab">
-              <h2 className="text-base font-semibold text-slate-900">Nisab threshold</h2>
-              <ul className="mt-2 list-disc pl-5 space-y-2">
-                <li>Silver basis: 612.36g × silver rate</li>
-                <li>Gold basis: 87.48g × gold rate</li>
-              </ul>
-            </section>
-
-            <section id="sources">
-              <h2 className="text-base font-semibold text-slate-900">Sources & methodology</h2>
-              <p className="mt-2">
-                This app follows widely accepted Zakat principles and values, aiming for clarity and transparency rather
-                than issuing rulings.
-              </p>
-            </section>
-
-            <section id="privacy">
-              <h2 className="text-base font-semibold text-slate-900">Privacy</h2>
-              <p className="mt-2">All data is stored locally on your device. No accounts, no analytics, no tracking.</p>
-            </section>
-
-            <section id="feedback">
-              <h2 className="text-base font-semibold text-slate-900">Feedback</h2>
-              <p className="mt-2">Share bugs, suggestions, or improvements. Feedback helps make the app better.</p>
-            </section>
           </div>
 
-          <div className="mt-8 text-xs text-slate-500">
-            Tip: You can link directly to sections (e.g. <code>/help#zakat</code>)
+          <div className="mt-8 space-y-4">
+            {sections.map((s) => (
+              <div key={s.id} id={s.id}>
+                <CollapsibleSection
+                  title={s.title}
+                  open={openId === s.id}
+                  onToggle={() => setOpenId((curr) => (curr === s.id ? "" : s.id))}
+                >
+                  {s.body}
+                </CollapsibleSection>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 text-center text-xs text-slate-500">
+            Tip: You can bookmark specific sections using URLs like{" "}
+            <span className="font-mono">/help#zakat</span>
           </div>
         </div>
       </div>
