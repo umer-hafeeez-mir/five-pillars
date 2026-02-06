@@ -9,6 +9,30 @@ type Section = {
   body: React.ReactNode;
 };
 
+/* ---------------- UI bits ---------------- */
+
+function HelpFab() {
+  return (
+    <Link
+      href="/help"
+      aria-label="Help"
+      title="Help"
+      className={[
+        "fixed right-6 top-10 z-50",
+        "inline-flex h-10 w-10 items-center justify-center rounded-full",
+        "border border-slate-200 bg-white/90 backdrop-blur",
+        "text-slate-700 hover:text-emerald-900 hover:bg-white",
+        "shadow-[0_10px_25px_rgba(2,6,23,0.12)]",
+        "transition",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+      ].join(" ")}
+    >
+      <span className="text-sm font-bold leading-none">?</span>
+    </Link>
+  );
+}
+
+
 function Chevron({ open }: { open: boolean }) {
   return (
     <span
