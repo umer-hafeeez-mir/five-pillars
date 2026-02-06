@@ -469,10 +469,10 @@ export default function HelpPage() {
             </div>
 
             <h1 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
-              Help & Documentation
+              Help Documentation
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Tap a section to expand. Only one section stays open at a time.
+              Tap a section to expand.
             </p>
           </div>
 
