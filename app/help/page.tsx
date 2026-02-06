@@ -362,43 +362,59 @@ export default function HelpPage() {
         )
       },
       {
-        id: "feedback",
-        title: "7) Feedback",
-        body: (
-          <>
-            <div className="text-slate-600">
-              Want to suggest an improvement, report a bug, or request a feature?
-            </div>
+  id: "feedback",
+  title: "7) Feedback",
+  body: (
+    <>
+      <div className="text-slate-600">
+        Want to suggest an improvement, report a bug, or request a feature?
+      </div>
 
-            <Callout title="THE BEST KIND OF FEEDBACK">
-              <ul className="list-disc pl-5 space-y-1">
-                <li>What you were trying to do</li>
-                <li>What you expected to happen</li>
-                <li>What actually happened</li>
-                <li>A screenshot (if possible)</li>
-              </ul>
-            </Callout>
+      <Callout title="THE BEST KIND OF FEEDBACK">
+        <ul className="list-disc pl-5 space-y-1">
+          <li>What you were trying to do</li>
+          <li>What you expected to happen</li>
+          <li>What actually happened</li>
+          <li>A screenshot (if possible)</li>
+        </ul>
+      </Callout>
 
-            <div className="mt-3 text-slate-600">
-              If your build includes an in-app feedback link, use that. Otherwise, you can add one here:
-            </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {/* Primary feedback action */}
+        <a
+          href="mailto:umerhafeez.mir@outlook.com?subject=Five%20Pillars%20App%20Feedback"
+          className="inline-flex items-center justify-center rounded-xl
+                     bg-emerald-800 hover:bg-emerald-900
+                     text-white px-4 py-2 text-sm font-semibold
+                     transition shadow-sm"
+        >
+          Send feedback via email
+        </a>
 
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-              <div className="font-semibold text-slate-900">Tip</div>
-              <div className="mt-1">
-                Add a feedback form link (Google Form / Typeform) or a mailto link:
-                <div className="mt-2">
-                  Example:{" "}
-                  <span className="font-mono text-xs">
-                    mailto:your-email?subject=Zakat%20App%20Feedback
-                  </span>
-                </div>
-              </div>
-            </div>
-          </>
-        )
-      },
-      {
+        {/* Secondary hint */}
+        <span className="text-xs text-slate-500">
+          Opens your email app
+        </span>
+      </div>
+
+      <div className="mt-4 text-slate-600">
+        Prefer a form instead of email? You can also link a feedback form below.
+      </div>
+
+      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <div className="font-semibold text-slate-900">Tip</div>
+        <div className="mt-1">
+          You can replace or add a form link (Google Form / Typeform):
+          <div className="mt-2">
+            <span className="font-mono text-xs">
+              https://forms.gle/your-form-id
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+},{
         id: "about",
         title: "8) About",
         body: (
