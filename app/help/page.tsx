@@ -457,9 +457,6 @@ export default function HelpPage() {
       <div className="container-page pt-10 pb-14">
         <div className="mx-auto max-w-3xl">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold tracking-widest text-slate-500">
-              HELP
-            </div>
 
             <h1 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
               Help Documentation
