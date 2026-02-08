@@ -50,22 +50,42 @@ function HelpFab() {
   return (
     <Link
       href="/help"
-      aria-label="Help"
-      title="Help"
+      aria-label="Help documentation"
+      title="Help documentation"
       className={[
         "fixed right-6 top-10 z-50",
-        "inline-flex h-10 w-10 items-center justify-center rounded-full",
-        "border border-slate-200 bg-white/90 backdrop-blur",
-        "text-slate-700 hover:text-emerald-900 hover:bg-white",
+        "inline-flex items-center gap-2",
+        "rounded-xl border border-slate-200",
+        "bg-white/90 backdrop-blur",
+        "px-4 py-2",
+        "text-sm font-semibold text-slate-700",
+        "hover:bg-white hover:text-emerald-900",
         "shadow-[0_10px_25px_rgba(2,6,23,0.12)]",
         "transition",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
       ].join(" ")}
     >
-      <span className="text-sm font-bold leading-none">?</span>
+      {/* Optional icon */}
+      <svg
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4" />
+        <path d="M12 17h.01" />
+      </svg>
+
+      <span>Help docs</span>
     </Link>
   );
 }
+
 
 function CollapsibleCard({
   title,
@@ -423,12 +443,35 @@ export default function Page() {
       </header>
 
       <section className="container-page pb-24">
-        <PillarHeader
-          title={active === "zakat" ? "Calculate Zakat" : pillar.title}
-          subtitle={pillar.subtitle}
-          icon={pillar.icon}
-          hideIcon={active === "zakat"}
-        />
+       <PillarHeader
+  title={
+    active === "zakat" ? (
+      <span className="relative inline-flex items-center">
+        {/* Main title stays visually centered */}
+        <span className="text-center">Calculate Zakat</span>
+
+        {/* Early access tag nudged right */}
+        <span
+          className={[
+            "ml-3",                // ← spacing to the right
+            "inline-flex items-center rounded-full",
+            "border border-amber-200 bg-amber-50",
+            "px-2.5 py-0.5",
+            "text-[11px] font-semibold text-amber-900"
+          ].join(" ")}
+        >
+          In Early Access
+        </span>
+      </span>
+    ) : (
+      pillar.title
+    )
+  }
+  subtitle={pillar.subtitle}
+  icon={pillar.icon}
+  hideIcon={active === "zakat"}
+/>
+
 
         {/* Non-zakat pillars unchanged */}
         {active !== "zakat" ? (

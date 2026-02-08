@@ -1,3 +1,5 @@
+// components/PillarHeader.tsx
+import React from "react";
 import {
   HeartIcon,
   ClockIcon,
@@ -31,7 +33,7 @@ export default function PillarHeader({
   hideIcon = false
 }: {
   icon: string;
-  title: string;
+  title: React.ReactNode; // ✅ changed from string
   subtitle: string;
   hideIcon?: boolean;
 }) {
