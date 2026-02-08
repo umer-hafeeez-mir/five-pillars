@@ -1,85 +1,61 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-/* ---------------- Formatting helpers ---------------- */
+function addIndianCommas(intPart: string) {
+  // Remove leading zeros but keep at least one zero if empty
+  const raw = intPart.replace(/^0+(?=\d)/, "");
 
-function sanitizeNumeric(raw: string, maxDecimals: number) {
-  // remove commas + keep only digits + one dot
-  let s = raw.replace(/,/g, "");
-  s = s.replace(/[^\d.]/g, "");
+  // Indian grouping: last 3, then groups of 2
+  const n = raw.length;
+  if (n <= 3) return raw || "0";
 
-  const firstDot = s.indexOf(".");
-  if (firstDot !== -1) {
-    s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
+  const last3 = raw.slice(n - 3);
+  const rest = raw.slice(0, n - 3);
+
+  const restWithCommas = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
+  return `${restWithCommas},${last3}`;
+}
+
+function stripNonNumericChars(s: string) {
+  // allow digits and one dot only
+  let out = "";
+  let dotSeen = false;
+  for (const ch of s) {
+    if (ch >= "0" && ch <= "9") out += ch;
+    else if (ch === "." && !dotSeen) {
+      out += ".";
+      dotSeen = true;
+    }
   }
-
-  // limit decimals
-  const [i, d] = s.split(".");
-  if (d !== undefined) return `${i}.${d.slice(0, maxDecimals)}`;
-  return i;
+  return out;
 }
 
-function formatIndianNumberString(raw: string) {
-  // raw is digits + optional dot, no commas
-  if (!raw) return "";
+function formatWithCommasPreserveDecimals(raw: string) {
+  // raw assumed to be sanitized like "1234.50" or "1234." or ".5"
+  if (raw === "") return "";
 
-  const [intRaw, decRaw] = raw.split(".");
-  const intPart = intRaw.replace(/^0+(?=\d)/, ""); // trim leading zeros (keep single 0)
-  const intSafe = intPart === "" ? "0" : intPart;
+  const hasDot = raw.includes(".");
+  const [leftRaw, rightRaw = ""] = raw.split(".");
 
-  // Indian grouping: last 3 digits then groups of 2
-  const last3 = intSafe.slice(-3);
-  const rest = intSafe.slice(0, -3);
-  const groupedRest = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-  const groupedInt = rest ? `${groupedRest},${last3}` : last3;
+  // Handle cases like ".5"
+  const left = leftRaw === "" ? "0" : leftRaw;
 
-  if (raw.includes(".")) {
-    // keep dot even if decimals are empty (so user can type "12.")
-    return `${groupedInt}.${decRaw ?? ""}`;
-  }
+  const leftFormatted = addIndianCommas(left);
 
-  return groupedInt;
+  if (!hasDot) return leftFormatted;
+
+  // Preserve exactly what user typed after dot, even empty string (for "12.")
+  return `${leftFormatted}.${rightRaw}`;
 }
 
-// caret helpers (keeps typing smooth while inserting commas)
-function countDigitsLeft(str: string, cursor: number) {
-  let count = 0;
-  for (let i = 0; i < Math.min(cursor, str.length); i++) {
-    if (/\d/.test(str[i])) count++;
-  }
-  return count;
+function parseToNumberOrEmpty(rawSanitized: string): number | "" {
+  if (rawSanitized === "") return "";
+  // "." or "0." should not become NaN — treat "." as 0 but keep display logic separate
+  if (rawSanitized === ".") return 0;
+  const num = Number(rawSanitized);
+  return Number.isFinite(num) ? num : "";
 }
-
-function cursorFromDigitsLeft(str: string, digitsLeft: number) {
-  if (digitsLeft <= 0) return 0;
-  let count = 0;
-  for (let i = 0; i < str.length; i++) {
-    if (/\d/.test(str[i])) count++;
-    if (count >= digitsLeft) return i + 1;
-  }
-  return str.length;
-}
-
-function mergeRefs<T>(
-  ...refs: Array<React.Ref<T> | undefined>
-): React.RefCallback<T> {
-  return (value) => {
-    refs.forEach((ref) => {
-      if (!ref) return;
-      if (typeof ref === "function") ref(value);
-      else {
-        try {
-          (ref as React.MutableRefObject<T | null>).current = value;
-        } catch {
-          // ignore
-        }
-      }
-    });
-  };
-}
-
-/* ---------------- Component ---------------- */
 
 export default function Field({
   label,
@@ -89,7 +65,7 @@ export default function Field({
   value,
   onChange,
   inputRef,
-  maxDecimals = 2
+  maxDecimals
 }: {
   label: string;
   hint?: string;
@@ -98,27 +74,91 @@ export default function Field({
   value: number | "";
   onChange: (v: number | "") => void;
   inputRef?: React.Ref<HTMLInputElement>;
-  maxDecimals?: number; // ✅ set 3 for grams, keep 2 for currency/rates
+  /**
+   * Optional: cap decimals (ex: 2 for money, 3 for grams)
+   * If omitted, allows any reasonable decimals.
+   */
+  maxDecimals?: number;
 }) {
-  const innerRef = React.useRef<HTMLInputElement | null>(null);
+  const localRef = useRef<HTMLInputElement | null>(null);
+  const mergedRef = (node: HTMLInputElement | null) => {
+    localRef.current = node;
+    if (typeof inputRef === "function") inputRef(node);
+    else if (inputRef && "current" in (inputRef as any)) (inputRef as any).current = node;
+  };
 
-  // Draft string shown in the input (formatted with commas)
-  const [draft, setDraft] = React.useState<string>("");
+  // Keep a raw text state so we can preserve "12." and trailing zeros
+  const [text, setText] = useState<string>("");
 
-  // Sync draft whenever parent value changes externally (reset, autofill, etc.)
-  React.useEffect(() => {
-    if (value === "") {
-      setDraft("");
-      return;
-    }
+  const formattedFromValue = useMemo(() => {
+    if (value === "") return "";
+    // Use plain string for the number (not locale) then format ourselves
+    // But note: numeric value loses trailing zeros — that's okay only when we sync from external state.
+    const s = String(value);
+    const sanitized = stripNonNumericChars(s);
+    return formatWithCommasPreserveDecimals(sanitized);
+  }, [value]);
 
-    // Convert number -> string, keep up to maxDecimals (but don’t force decimals)
-    const asString = String(value);
-    const sanitized = sanitizeNumeric(asString, maxDecimals);
-    const formatted = formatIndianNumberString(sanitized);
+  // Sync external value -> internal text when value changes from outside (reset, autofill, etc.)
+  useEffect(() => {
+    setText(formattedFromValue);
+  }, [formattedFromValue]);
 
-    setDraft(formatted);
-  }, [value, maxDecimals]);
+  const applyMaxDecimals = (rawSanitized: string) => {
+    if (!maxDecimals && maxDecimals !== 0) return rawSanitized;
+    if (!rawSanitized.includes(".")) return rawSanitized;
+
+    const [l, r] = rawSanitized.split(".");
+    return `${l}.${(r ?? "").slice(0, maxDecimals)}`;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const prev = text;
+    const nextTyped = input.value;
+
+    // Cursor position BEFORE we reformat
+    const caret = input.selectionStart ?? nextTyped.length;
+
+    // Sanitize (remove commas, spaces, extra dots, etc.)
+    const withoutCommas = nextTyped.replace(/,/g, "");
+    let rawSanitized = stripNonNumericChars(withoutCommas);
+
+    // Allow starting with "." -> "0."
+    if (rawSanitized.startsWith(".")) rawSanitized = "0" + rawSanitized;
+
+    // Enforce max decimals if provided
+    rawSanitized = applyMaxDecimals(rawSanitized);
+
+    // Build formatted display (commas only on integer part)
+    const nextFormatted = formatWithCommasPreserveDecimals(rawSanitized);
+
+    // Update local text immediately for smooth typing
+    setText(nextFormatted);
+
+    // Send numeric value upstream (number or "")
+    const parsed = parseToNumberOrEmpty(rawSanitized);
+    onChange(parsed);
+
+    // Restore caret position smartly (account for commas added/removed)
+    requestAnimationFrame(() => {
+      const el = localRef.current;
+      if (!el) return;
+
+      // Rough caret adjustment: compare comma counts before caret
+      const countCommas = (s: string) => (s.match(/,/g) || []).length;
+
+      const prevBefore = prev.slice(0, caret);
+      const nextBefore = nextFormatted.slice(0, caret);
+
+      const commaDelta = countCommas(nextBefore) - countCommas(prevBefore);
+      const newPos = Math.max(0, Math.min(nextFormatted.length, caret + commaDelta));
+
+      try {
+        el.setSelectionRange(newPos, newPos);
+      } catch {}
+    });
+  };
 
   return (
     <div>
@@ -126,13 +166,11 @@ export default function Field({
 
       <div className="mt-2 relative">
         {prefix && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-            {prefix}
-          </div>
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{prefix}</div>
         )}
 
         <input
-          ref={mergeRefs(innerRef, inputRef)}
+          ref={mergedRef}
           inputMode="decimal"
           className={[
             "w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-slate-900 outline-none",
@@ -140,67 +178,12 @@ export default function Field({
             prefix ? "pl-9" : "",
             suffix ? "pr-10" : ""
           ].join(" ")}
-          value={draft}
-          onChange={(e) => {
-            const el = e.target;
-            const raw = el.value;
-
-            // Allow empty
-            if (raw.trim() === "") {
-              setDraft("");
-              onChange("");
-              return;
-            }
-
-            const prevCursor = el.selectionStart ?? raw.length;
-            const digitsLeft = countDigitsLeft(raw, prevCursor);
-
-            // Sanitize -> format
-            const cleaned = sanitizeNumeric(raw, maxDecimals);
-
-            // If user typed only "." or invalid partial state, keep draft but don't update number
-            if (cleaned === "." || cleaned === "") {
-              setDraft(raw);
-              return;
-            }
-
-            const formatted = formatIndianNumberString(cleaned);
-            setDraft(formatted);
-
-            // Parse number safely
-            const numeric = Number(cleaned.replace(/,/g, ""));
-            if (Number.isFinite(numeric)) {
-              onChange(numeric);
-            }
-
-            // Restore cursor after formatting
-            requestAnimationFrame(() => {
-              const node = innerRef.current;
-              if (!node) return;
-              const nextCursor = cursorFromDigitsLeft(formatted, digitsLeft);
-              node.setSelectionRange(nextCursor, nextCursor);
-            });
-          }}
-          onBlur={() => {
-            // On blur: normalize any weird draft like "12." -> "12"
-            const cleaned = sanitizeNumeric(draft, maxDecimals);
-            if (cleaned === "" || cleaned === ".") {
-              setDraft("");
-              onChange("");
-              return;
-            }
-            const formatted = formatIndianNumberString(cleaned);
-            setDraft(formatted);
-
-            const numeric = Number(cleaned.replace(/,/g, ""));
-            if (Number.isFinite(numeric)) onChange(numeric);
-          }}
+          value={text}
+          onChange={handleChange}
         />
 
         {suffix && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-            {suffix}
-          </div>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{suffix}</div>
         )}
       </div>
 
