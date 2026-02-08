@@ -1,6 +1,5 @@
 // components/PillarHeader.tsx
 import React from "react";
-import Link from "next/link";
 import {
   HeartIcon,
   ClockIcon,
@@ -26,20 +25,6 @@ function Icon({ name }: { name: string }) {
       return <span className="text-lg">•</span>;
   }
 }
-<Link
-  href="/help"
-  className={[
-    "inline-flex sm:hidden", // 👈 mobile only
-    "items-center gap-1.5",
-    "rounded-lg border border-slate-200 bg-white",
-    "px-3 py-1.5",
-    "text-xs font-semibold text-slate-700",
-    "hover:bg-slate-50 transition"
-  ].join(" ")}
->
-  <span>Help</span>
-</Link>
-
 export default function PillarHeader({
   icon,
   title,
