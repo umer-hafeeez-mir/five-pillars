@@ -53,8 +53,9 @@ function HelpFab() {
       aria-label="Help documentation"
       title="Help documentation"
       className={[
-        "fixed right-6 top-10 z-50",
-        "inline-flex items-center gap-2",
+        "hidden sm:inline-flex", // 👈 key change
+        "fixed right-6 top-6 z-50",
+        "items-center gap-2",
         "rounded-xl border border-slate-200",
         "bg-white/90 backdrop-blur",
         "px-4 py-2",
@@ -65,26 +66,22 @@ function HelpFab() {
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
       ].join(" ")}
     >
-      {/* Optional icon */}
       <svg
         viewBox="0 0 24 24"
         className="h-4 w-4"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
       >
         <circle cx="12" cy="12" r="10" />
         <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4" />
         <path d="M12 17h.01" />
       </svg>
-
       <span>Help docs</span>
     </Link>
   );
 }
+
 
 
 function CollapsibleCard({
