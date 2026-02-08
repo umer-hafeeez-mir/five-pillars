@@ -67,8 +67,6 @@ function HelpFab() {
   );
 }
 
-
-
 function CollapsibleCard({
   title,
   subtitle,
@@ -266,12 +264,80 @@ export default function Page() {
     }
   };
 
+  /**
+   * handleFetchOnline
+   *
+   * Replaced the local mock behaviour with a call to your server route:
+   * GET /api/metal-rates?basis=gold|silver&currency=INR
+   *
+   * - Tries to parse common response shapes (ratePerGram, rate, pricePerGram, price, rates[metal]).
+   * - Falls back to mock values on failure (so users still have a working UX).
+   */
   const handleFetchOnline = async () => {
-    try {
-      // mock values
-      const mockGold = 14413.5;
-      const mockSilver = 165.25;
+    const mockGold = 14413.5;
+    const mockSilver = 165.25;
 
+    try {
+      const currency = "INR";
+      const basis = z.nisabBasis === "gold" ? "gold" : "silver";
+      const url = `/api/metal-rates?basis=${encodeURIComponent(basis)}&currency=${encodeURIComponent(
+        currency
+      )}`;
+
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error(`API responded ${res.status}`);
+      }
+
+      const json = await res.json().catch(() => null);
+      if (!json) throw new Error("Invalid JSON from rates API");
+
+      // Try common fields
+      let rate: number | null = null;
+
+      // common top-level fields
+      if (json.ratePerGram && !isNaN(Number(json.ratePerGram))) rate = Number(json.ratePerGram);
+      else if (json.rate && !isNaN(Number(json.rate))) rate = Number(json.rate);
+      else if (json.pricePerGram && !isNaN(Number(json.pricePerGram))) rate = Number(json.pricePerGram);
+      else if (json.price && !isNaN(Number(json.price))) rate = Number(json.price);
+
+      // some providers return object with symbol keys: { rates: { XAU: 1234 } }
+      if (rate === null && json.rates && typeof json.rates === "object") {
+        const metalCode = z.nisabBasis === "silver" ? "XAG" : "XAU";
+        const maybe = json.rates[metalCode] ?? json.rates["XAU"] ?? json.rates["XAG"];
+        if (maybe && !isNaN(Number(maybe))) rate = Number(maybe);
+      }
+
+      // Some providers return nested data e.g. { data: { price: ... } }
+      if (rate === null && json.data) {
+        if (json.data.ratePerGram && !isNaN(Number(json.data.ratePerGram)))
+          rate = Number(json.data.ratePerGram);
+        else if (json.data.price && !isNaN(Number(json.data.price))) rate = Number(json.data.price);
+      }
+
+      // If still null, fallback to mock for a graceful UX
+      if (rate === null) {
+        console.warn("metal-rates: unable to parse response, falling back to mock");
+        rate = basis === "gold" ? mockGold : mockSilver;
+      }
+
+      // If basis=gold we write into 24k rate (quick simple approach)
+      if (z.nisabBasis === "gold") {
+        setZ((s) => ({
+          ...s,
+          goldHoldings: {
+            ...(s.goldHoldings ?? defaultGoldHoldings()),
+            "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate }
+          }
+        }));
+      } else {
+        setZ((s) => ({ ...s, silverRate: rate }));
+      }
+
+      setLastFetchedAt(Date.now());
+    } catch (err) {
+      console.error("Failed to fetch metal rates:", err);
+      // graceful fallback: keep the mock values so the UI remains functional
       if (z.nisabBasis === "gold") {
         setZ((s) => ({
           ...s,
@@ -283,10 +349,11 @@ export default function Page() {
       } else {
         setZ((s) => ({ ...s, silverRate: mockSilver }));
       }
-
       setLastFetchedAt(Date.now());
-    } catch {
-      alert("Could not fetch rates. You can still enter the rate manually.");
+      // Notify user but do not block
+      try {
+        alert("Could not fetch live rates; using a fallback estimate. You can still edit the rate manually.");
+      } catch {}
     }
   };
 
@@ -429,7 +496,7 @@ export default function Page() {
   title={
     active === "zakat" ? (
       <span className="relative inline-flex items-center">
-        {/* Main title stays visually centered */}
+        {/* Main title */}
         <span className="text-center">Calculate Zakat</span>
 
         {/* Early access tag nudged right */}
@@ -657,9 +724,7 @@ export default function Page() {
                     </p>
 
                     <div className="mt-4">
-                      <div className="text-sm font-semibold text-slate-900">
-                        {manualRateLabel} <span className="text-slate-500">(Enter today’s rate)</span>
-                      </div>
+                      <div className="text-sm font-semibold text-slate-900">{manualRateLabel} <span className="text-slate-500">(Enter today’s rate)</span></div>
                       <div className="mt-2">
                         <Field
                           label=""
