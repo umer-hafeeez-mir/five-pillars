@@ -25,7 +25,6 @@ function Icon({ name }: { name: string }) {
       return <span className="text-lg">•</span>;
   }
 }
-
 export default function PillarHeader({
   icon,
   title,
