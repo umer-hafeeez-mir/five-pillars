@@ -264,7 +264,7 @@ export default function Page() {
     }
   };
 
-  /**
+ /**
  * handleFetchOnline
  *
  * Calls:
@@ -302,7 +302,6 @@ const handleFetchOnline = async () => {
     else if (json.pricePerGram != null && !isNaN(Number(json.pricePerGram))) perGram = Number(json.pricePerGram);
     else if (json.price != null && !isNaN(Number(json.price))) perGram = Number(json.price);
 
-    // some shapes: { data: { perGram: ... } }
     if (perGram === null && json.data) {
       if (json.data.perGram != null && !isNaN(Number(json.data.perGram))) perGram = Number(json.data.perGram);
       else if (json.data.ratePerGram != null && !isNaN(Number(json.data.ratePerGram)))
@@ -317,7 +316,7 @@ const handleFetchOnline = async () => {
     }
 
     if (z.nisabBasis === "gold") {
-      const gold24 = perGram;
+      const gold24 = perGram; // 24K spot per gram
       const gold22 = gold24 * 0.916;
       const gold18 = gold24 * 0.75;
 
@@ -325,14 +324,15 @@ const handleFetchOnline = async () => {
         ...s,
         goldHoldings: {
           ...(s.goldHoldings ?? defaultGoldHoldings()),
-          "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: String(gold24) },
-          "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: String(gold22) },
-          "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: String(gold18) }
-          // custom left untouched (user-driven)
+          "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: gold24 },
+          "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: gold22 },
+          "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: gold18 }
+          // custom left untouched
         }
       }));
     } else {
-      setZ((s) => ({ ...s, silverRate: String(perGram) }));
+      // silverRate is typed number | ""
+      setZ((s) => ({ ...s, silverRate: perGram }));
     }
 
     setLastFetchedAt(Date.now());
@@ -349,13 +349,13 @@ const handleFetchOnline = async () => {
         ...s,
         goldHoldings: {
           ...(s.goldHoldings ?? defaultGoldHoldings()),
-          "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: String(gold24) },
-          "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: String(gold22) },
-          "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: String(gold18) }
+          "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: gold24 },
+          "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: gold22 },
+          "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: gold18 }
         }
       }));
     } else {
-      setZ((s) => ({ ...s, silverRate: String(mockSilver) }));
+      setZ((s) => ({ ...s, silverRate: mockSilver }));
     }
 
     setLastFetchedAt(Date.now());
@@ -365,6 +365,7 @@ const handleFetchOnline = async () => {
     } catch {}
   }
 };
+
 
 
   const toggleSection = (section: Exclude<ZakatSection, null>) => {
