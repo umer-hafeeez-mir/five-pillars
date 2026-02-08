@@ -429,10 +429,35 @@ export default function Page() {
         </svg>
       </button>
 
-      <header className="container-page pt-10 pb-4 text-center">
-        <div className="flex items-center justify-center max-w-5xl mx-auto px-4">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
-        </div>
+<header className="container-page pt-10 pb-4">
+  <div className="flex items-center justify-between max-w-5xl mx-auto px-4">
+    {/* Home button already exists on the left */}
+    <div className="w-10" /> {/* spacer to balance Help button */}
+
+    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center flex-1">
+      Five Pillars of Islam
+    </h1>
+
+    {/* Mobile-only Help button */}
+    <Link
+      href="/help"
+      className={[
+        "sm:hidden",
+        "inline-flex items-center justify-center",
+        "rounded-xl border border-slate-200 bg-white",
+        "px-3 py-2 text-xs font-semibold text-slate-700",
+        "hover:bg-slate-50 transition"
+      ].join(" ")}
+    >
+      Help docs
+    </Link>
+  </div>
+
+  <div className="mt-6 text-center">
+    <PillarTabs active={active} onChange={setActive} />
+  </div>
+</header>
+
 
         <div className="mt-6">
           <PillarTabs active={active} onChange={setActive} />
