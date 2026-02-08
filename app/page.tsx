@@ -62,7 +62,7 @@ function HelpFab() {
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
       ].join(" ")}
     >
-      <span className="text-sm font-bold leading-none">?</span>
+      <span className="text-sm font-bold leading-none">Help Docs</span>
     </Link>
   );
 }
