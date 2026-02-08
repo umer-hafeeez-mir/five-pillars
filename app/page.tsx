@@ -265,97 +265,107 @@ export default function Page() {
   };
 
   /**
-   * handleFetchOnline
-   *
-   * Replaced the local mock behaviour with a call to your server route:
-   * GET /api/metal-rates?basis=gold|silver&currency=INR
-   *
-   * - Tries to parse common response shapes (ratePerGram, rate, pricePerGram, price, rates[metal]).
-   * - Falls back to mock values on failure (so users still have a working UX).
-   */
-  const handleFetchOnline = async () => {
-    const mockGold = 14413.5;
-    const mockSilver = 165.25;
+ * handleFetchOnline
+ *
+ * Calls:
+ * GET /api/metal-rates?basis=gold|silver&currency=INR
+ *
+ * Your server route returns: { perGram, ... }
+ * - perGram is the spot price per gram for XAU (gold) or XAG (silver)
+ * - When gold basis is selected, we also derive 22k and 18k from 24k:
+ *   22k ≈ 24k * 0.916, 18k = 24k * 0.75
+ */
+const handleFetchOnline = async () => {
+  const mockGold24k = 14413.5;
+  const mockSilver = 165.25;
+
+  try {
+    const currency = "INR";
+    const basis = z.nisabBasis === "gold" ? "gold" : "silver";
+
+    const url = `/api/metal-rates?basis=${encodeURIComponent(basis)}&currency=${encodeURIComponent(
+      currency
+    )}`;
+
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`API responded ${res.status}`);
+
+    const json = await res.json().catch(() => null);
+    if (!json) throw new Error("Invalid JSON from rates API");
+
+    // ✅ IMPORTANT: your route returns `perGram`
+    let perGram: number | null = null;
+
+    if (json.perGram != null && !isNaN(Number(json.perGram))) perGram = Number(json.perGram);
+    else if (json.ratePerGram != null && !isNaN(Number(json.ratePerGram))) perGram = Number(json.ratePerGram);
+    else if (json.rate != null && !isNaN(Number(json.rate))) perGram = Number(json.rate);
+    else if (json.pricePerGram != null && !isNaN(Number(json.pricePerGram))) perGram = Number(json.pricePerGram);
+    else if (json.price != null && !isNaN(Number(json.price))) perGram = Number(json.price);
+
+    // some shapes: { data: { perGram: ... } }
+    if (perGram === null && json.data) {
+      if (json.data.perGram != null && !isNaN(Number(json.data.perGram))) perGram = Number(json.data.perGram);
+      else if (json.data.ratePerGram != null && !isNaN(Number(json.data.ratePerGram)))
+        perGram = Number(json.data.ratePerGram);
+      else if (json.data.price != null && !isNaN(Number(json.data.price))) perGram = Number(json.data.price);
+    }
+
+    // last resort
+    if (perGram === null) {
+      console.warn("metal-rates: unable to parse response, falling back to mock");
+      perGram = basis === "gold" ? mockGold24k : mockSilver;
+    }
+
+    if (z.nisabBasis === "gold") {
+      const gold24 = perGram;
+      const gold22 = gold24 * 0.916;
+      const gold18 = gold24 * 0.75;
+
+      setZ((s) => ({
+        ...s,
+        goldHoldings: {
+          ...(s.goldHoldings ?? defaultGoldHoldings()),
+          "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: String(gold24) },
+          "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: String(gold22) },
+          "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: String(gold18) }
+          // custom left untouched (user-driven)
+        }
+      }));
+    } else {
+      setZ((s) => ({ ...s, silverRate: String(perGram) }));
+    }
+
+    setLastFetchedAt(Date.now());
+  } catch (err) {
+    console.error("Failed to fetch metal rates:", err);
+
+    // graceful fallback so UX still works
+    if (z.nisabBasis === "gold") {
+      const gold24 = mockGold24k;
+      const gold22 = gold24 * 0.916;
+      const gold18 = gold24 * 0.75;
+
+      setZ((s) => ({
+        ...s,
+        goldHoldings: {
+          ...(s.goldHoldings ?? defaultGoldHoldings()),
+          "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: String(gold24) },
+          "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: String(gold22) },
+          "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: String(gold18) }
+        }
+      }));
+    } else {
+      setZ((s) => ({ ...s, silverRate: String(mockSilver) }));
+    }
+
+    setLastFetchedAt(Date.now());
 
     try {
-      const currency = "INR";
-      const basis = z.nisabBasis === "gold" ? "gold" : "silver";
-      const url = `/api/metal-rates?basis=${encodeURIComponent(basis)}&currency=${encodeURIComponent(
-        currency
-      )}`;
+      alert("Could not fetch live rates; using a fallback estimate. You can still edit the rate manually.");
+    } catch {}
+  }
+};
 
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) {
-        throw new Error(`API responded ${res.status}`);
-      }
-
-      const json = await res.json().catch(() => null);
-      if (!json) throw new Error("Invalid JSON from rates API");
-
-      // Try common fields
-      let rate: number | null = null;
-
-      // common top-level fields
-      if (json.ratePerGram && !isNaN(Number(json.ratePerGram))) rate = Number(json.ratePerGram);
-      else if (json.rate && !isNaN(Number(json.rate))) rate = Number(json.rate);
-      else if (json.pricePerGram && !isNaN(Number(json.pricePerGram))) rate = Number(json.pricePerGram);
-      else if (json.price && !isNaN(Number(json.price))) rate = Number(json.price);
-
-      // some providers return object with symbol keys: { rates: { XAU: 1234 } }
-      if (rate === null && json.rates && typeof json.rates === "object") {
-        const metalCode = z.nisabBasis === "silver" ? "XAG" : "XAU";
-        const maybe = json.rates[metalCode] ?? json.rates["XAU"] ?? json.rates["XAG"];
-        if (maybe && !isNaN(Number(maybe))) rate = Number(maybe);
-      }
-
-      // Some providers return nested data e.g. { data: { price: ... } }
-      if (rate === null && json.data) {
-        if (json.data.ratePerGram && !isNaN(Number(json.data.ratePerGram)))
-          rate = Number(json.data.ratePerGram);
-        else if (json.data.price && !isNaN(Number(json.data.price))) rate = Number(json.data.price);
-      }
-
-      // If still null, fallback to mock for a graceful UX
-      if (rate === null) {
-        console.warn("metal-rates: unable to parse response, falling back to mock");
-        rate = basis === "gold" ? mockGold : mockSilver;
-      }
-
-      // If basis=gold we write into 24k rate (quick simple approach)
-      if (z.nisabBasis === "gold") {
-        setZ((s) => ({
-          ...s,
-          goldHoldings: {
-            ...(s.goldHoldings ?? defaultGoldHoldings()),
-            "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate }
-          }
-        }));
-      } else {
-        setZ((s) => ({ ...s, silverRate: rate }));
-      }
-
-      setLastFetchedAt(Date.now());
-    } catch (err) {
-      console.error("Failed to fetch metal rates:", err);
-      // graceful fallback: keep the mock values so the UI remains functional
-      if (z.nisabBasis === "gold") {
-        setZ((s) => ({
-          ...s,
-          goldHoldings: {
-            ...(s.goldHoldings ?? defaultGoldHoldings()),
-            "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: mockGold }
-          }
-        }));
-      } else {
-        setZ((s) => ({ ...s, silverRate: mockSilver }));
-      }
-      setLastFetchedAt(Date.now());
-      // Notify user but do not block
-      try {
-        alert("Could not fetch live rates; using a fallback estimate. You can still edit the rate manually.");
-      } catch {}
-    }
-  };
 
   const toggleSection = (section: Exclude<ZakatSection, null>) => {
     setOpenSection((curr) => (curr === section ? null : section));
