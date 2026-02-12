@@ -1,14 +1,25 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { PillarKey } from "@/lib/pillars";
 import MapsShell from "./MapsShell";
-import LeafletMap from "./LeafletMap";
 
 type Mode = "maps" | "qibla";
 
+// ✅ IMPORTANT: this prevents Leaflet from being imported during SSR/prerender
+const LeafletMap = dynamic(() => import("./LeafletMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-2xl overflow-hidden border border-slate-200 bg-white soft-shadow">
+      <div className="h-[260px] flex items-center justify-center text-sm text-slate-500">
+        Loading map…
+      </div>
+    </div>
+  )
+});
+
 export default function PillarMapBar({ active }: { active: PillarKey }) {
-  // Show only on Salah + Hajj for now
   const show = active === "salah" || active === "hajj";
   if (!show) return null;
 
@@ -19,7 +30,7 @@ export default function PillarMapBar({ active }: { active: PillarKey }) {
       return {
         title: "Hajj Map",
         subtitle: "Key sites for Hajj (early version)",
-        center: { lat: 21.4225, lng: 39.8262 }, // Makkah
+        center: { lat: 21.4225, lng: 39.8262 },
         zoom: 12,
         markers: [
           { id: "kaaba", title: "Kaaba", description: "Masjid al-Haram", lat: 21.4225, lng: 39.8262 },
@@ -30,11 +41,10 @@ export default function PillarMapBar({ active }: { active: PillarKey }) {
       };
     }
 
-    // Salah
     return {
       title: "Salah",
       subtitle: "Maps + Qibla (coming soon)",
-      center: { lat: 21.4225, lng: 39.8262 }, // default to Makkah for now
+      center: { lat: 21.4225, lng: 39.8262 },
       zoom: 4,
       markers: [
         {
