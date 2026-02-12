@@ -368,58 +368,42 @@ export default function LeafletMap({
   zoom={zoom}
   scrollWheelZoom={true}
   style={{ height: "100%", width: "100%" }}
-  whenReady={(event) => {
-    // react-leaflet v4+ passes an event object
-    // event.target is the actual Leaflet map instance
-    // This avoids the TypeScript error you saw
-    // @ts-ignore
-    mapRef.current = event?.target;
-  }}
 >
-  {/* Free OpenStreetMap tiles */}
   <TileLayer
     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
     attribution="&copy; OpenStreetMap contributors"
   />
 
-  {/* Default markers */}
+  <CaptureMapInstance
+    onMap={(map) => {
+      mapRef.current = map;
+    }}
+  />
+
   {markers.map((m) => (
     <Marker key={m.id} position={[m.lat, m.lng]} icon={DefaultIcon}>
       <Popup>
         <div className="text-sm font-semibold">{m.title}</div>
-        {m.description ? (
-          <div className="text-xs text-slate-600 mt-1">{m.description}</div>
-        ) : null}
+        {m.description ? <div className="text-xs text-slate-600 mt-1">{m.description}</div> : null}
       </Popup>
     </Marker>
   ))}
 
-  {/* 🔴 User location + accuracy circle */}
   {userLocation && (
     <>
-      <Marker
-        position={[userLocation.lat, userLocation.lng]}
-        icon={UserLocationDotIcon}
-      >
+      <Marker position={[userLocation.lat, userLocation.lng]} icon={UserLocationDotIcon}>
         <Popup>
           <div className="text-sm font-semibold">Your location</div>
           {typeof heading === "number" ? (
-            <div className="text-xs text-slate-600 mt-1">
-              Heading: {Math.round(heading)}°
-            </div>
+            <div className="text-xs text-slate-600 mt-1">Heading: {Math.round(heading)}°</div>
           ) : null}
         </Popup>
       </Marker>
 
-      {/* ➤ Heading arrow */}
       {typeof heading === "number" && (
-        <Marker
-          position={[userLocation.lat, userLocation.lng]}
-          icon={headingArrowIcon(heading)}
-        />
+        <Marker position={[userLocation.lat, userLocation.lng]} icon={headingArrowIcon(heading)} />
       )}
 
-      {/* Accuracy circle */}
       <Circle
         center={[userLocation.lat, userLocation.lng]}
         radius={userLocation.accuracy}
@@ -432,6 +416,7 @@ export default function LeafletMap({
     </>
   )}
 </MapContainer>
+
 
       </div>
 
