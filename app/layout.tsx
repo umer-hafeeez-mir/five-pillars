@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import "leaflet/dist/leaflet.css";
 
 export const metadata: Metadata = {
   title: "Five Pillars of Islam",
