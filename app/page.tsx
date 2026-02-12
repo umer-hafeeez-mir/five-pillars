@@ -505,9 +505,13 @@ const handleFetchOnline = async () => {
       </header>
 
       <section className="container-page pb-24">
-       <PillarHeader
-  title={
-    active === "zakat" ? (
+  <PillarHeader ... />
+
+  {/* ✅ Persistent map area for Salah + Hajj (top), content below changes */}
+  <PillarMapBar active={active} />
+
+  {/* Non-zakat pillars unchanged */}
+  {active !== "zakat" ? (
       <span className="relative inline-flex items-center">
         {/* Main title */}
         <span className="text-center">Calculate Zakat</span>
