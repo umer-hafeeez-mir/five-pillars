@@ -363,71 +363,76 @@ export default function LeafletMap({
       </div>
 
       <div style={{ height }}>
-        <MapContainer
-          center={mapCenter}
-          zoom={zoom}
-          scrollWheelZoom={true}
-          style={{ height: "100%", width: "100%" }}
-          whenCreated={(map) => {
-            mapRef.current = map;
-          }}
-        >
-          {/* Free OpenStreetMap tiles */}
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-          />
+       <MapContainer
+  center={mapCenter}
+  zoom={zoom}
+  scrollWheelZoom={true}
+  style={{ height: "100%", width: "100%" }}
+  whenReady={(event) => {
+    // react-leaflet v4+ passes an event object
+    // event.target is the actual Leaflet map instance
+    // This avoids the TypeScript error you saw
+    // @ts-ignore
+    mapRef.current = event?.target;
+  }}
+>
+  {/* Free OpenStreetMap tiles */}
+  <TileLayer
+    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    attribution="&copy; OpenStreetMap contributors"
+  />
 
-          {/* Default markers */}
-          {markers.map((m) => (
-            <Marker key={m.id} position={[m.lat, m.lng]} icon={DefaultIcon}>
-              <Popup>
-                <div className="text-sm font-semibold">{m.title}</div>
-                {m.description ? (
-                  <div className="text-xs text-slate-600 mt-1">{m.description}</div>
-                ) : null}
-              </Popup>
-            </Marker>
-          ))}
+  {/* Default markers */}
+  {markers.map((m) => (
+    <Marker key={m.id} position={[m.lat, m.lng]} icon={DefaultIcon}>
+      <Popup>
+        <div className="text-sm font-semibold">{m.title}</div>
+        {m.description ? (
+          <div className="text-xs text-slate-600 mt-1">{m.description}</div>
+        ) : null}
+      </Popup>
+    </Marker>
+  ))}
 
-          {/* 🔴 User location + accuracy circle */}
-          {userLocation && (
-            <>
-              <Marker
-                position={[userLocation.lat, userLocation.lng]}
-                icon={UserLocationDotIcon}
-              >
-                <Popup>
-                  <div className="text-sm font-semibold">Your location</div>
-                  {typeof heading === "number" ? (
-                    <div className="text-xs text-slate-600 mt-1">
-                      Heading: {Math.round(heading)}°
-                    </div>
-                  ) : null}
-                </Popup>
-              </Marker>
+  {/* 🔴 User location + accuracy circle */}
+  {userLocation && (
+    <>
+      <Marker
+        position={[userLocation.lat, userLocation.lng]}
+        icon={UserLocationDotIcon}
+      >
+        <Popup>
+          <div className="text-sm font-semibold">Your location</div>
+          {typeof heading === "number" ? (
+            <div className="text-xs text-slate-600 mt-1">
+              Heading: {Math.round(heading)}°
+            </div>
+          ) : null}
+        </Popup>
+      </Marker>
 
-              {/* ➤ Heading arrow (only if we have heading) */}
-              {typeof heading === "number" && (
-                <Marker
-                  position={[userLocation.lat, userLocation.lng]}
-                  icon={headingArrowIcon(heading)}
-                />
-              )}
+      {/* ➤ Heading arrow */}
+      {typeof heading === "number" && (
+        <Marker
+          position={[userLocation.lat, userLocation.lng]}
+          icon={headingArrowIcon(heading)}
+        />
+      )}
 
-              {/* Accuracy circle */}
-              <Circle
-                center={[userLocation.lat, userLocation.lng]}
-                radius={userLocation.accuracy}
-                pathOptions={{
-                  color: "#e11d48",
-                  fillColor: "#e11d48",
-                  fillOpacity: 0.12
-                }}
-              />
-            </>
-          )}
-        </MapContainer>
+      {/* Accuracy circle */}
+      <Circle
+        center={[userLocation.lat, userLocation.lng]}
+        radius={userLocation.accuracy}
+        pathOptions={{
+          color: "#e11d48",
+          fillColor: "#e11d48",
+          fillOpacity: 0.12
+        }}
+      />
+    </>
+  )}
+</MapContainer>
+
       </div>
 
       {/* Tiny status (optional but helpful) */}
