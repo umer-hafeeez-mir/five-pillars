@@ -11,6 +11,8 @@ import Accordion from "@/components/Accordion";
 import usePersistedState from "@/lib/usePersistedState";
 import { PILLARS, PillarKey } from "@/lib/pillars";
 import { calculateZakat, ZakatForm, GoldKarat, GoldHoldings } from "@/lib/zakat";
+import PillarMapBar from "@/components/maps/PillarMapBar";
+
 
 /* ---------------- Helpers ---------------- */
 
