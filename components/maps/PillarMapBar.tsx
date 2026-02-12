@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import MapShell from "@/components/maps/MapShell";
+import MapShell from "@/components/maps/MapsShell";
 import { PillarKey } from "@/lib/pillars";
 
 type Mode = "maps" | "qibla";
