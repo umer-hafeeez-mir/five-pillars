@@ -243,7 +243,10 @@ export default function LeafletMap({
 
       <div style={{ height: mapHeight }}>
         <MapContainer center={mapCenter} zoom={zoom} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
-          <TileLayer key={lang} url={tileUrlForLang(lang)} attribution={tileAttribution()} />
+          <TileLayer
+  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  attribution="&copy; OpenStreetMap contributors"
+/>
 
           {/* Fly to selected center (search or locate) */}
           {selectedCenter ? <FlyTo center={selectedCenter} zoom={14} /> : null}
