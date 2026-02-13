@@ -2,22 +2,14 @@
 
 import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import MapsShell from "./MapsShell";
 import { PillarKey } from "@/lib/pillars";
-import LeafletMap from "./LeafletMap";
+import MapsShell from "./MapsShell";
 import QiblaCompass from "./QiblaCompass";
+
 type Mode = "maps" | "qibla";
 
-// ✅ IMPORTANT: Leaflet must be loaded client-side only (prevents "window is not defined" on prerender)
-const LeafletMap = dynamic(() => import("./LeafletMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 soft-shadow">
-      <div className="text-sm font-semibold text-slate-900">Loading map…</div>
-      <div className="mt-1 text-sm text-slate-600">Preparing map tiles.</div>
-    </div>
-  )
-});
+// IMPORTANT: Leaflet must be loaded client-side only
+const LeafletMap = dynamic(() => import("./LeafletMap"), { ssr: false });
 
 export default function PillarMapBar({ active }: { active: PillarKey }) {
   const show = active === "salah" || active === "hajj";
@@ -46,9 +38,7 @@ export default function PillarMapBar({ active }: { active: PillarKey }) {
       subtitle: "Map and Qibla tools",
       center: { lat: 21.4225, lng: 39.8262 },
       zoom: 4,
-      markers: [
-        { id: "kaaba", title: "Kaaba", description: "Qibla reference", lat: 21.4225, lng: 39.8262 }
-      ]
+      markers: [{ id: "kaaba", title: "Kaaba", description: "Qibla reference", lat: 21.4225, lng: 39.8262 }]
     };
   }, [active]);
 
@@ -76,4 +66,3 @@ export default function PillarMapBar({ active }: { active: PillarKey }) {
     </MapsShell>
   );
 }
-
