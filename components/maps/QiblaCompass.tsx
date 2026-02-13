@@ -1,311 +1,456 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+type Loc = { lat: number; lng: number; accuracy?: number };
 
 const KAABA = { lat: 21.4225, lng: 39.8262 };
 
-function toRad(deg: number) {
-  return (deg * Math.PI) / 180;
+function toRad(d: number) {
+  return (d * Math.PI) / 180;
 }
-function toDeg(rad: number) {
-  return (rad * 180) / Math.PI;
+function toDeg(r: number) {
+  return (r * 180) / Math.PI;
+}
+function norm360(d: number) {
+  const v = d % 360;
+  return v < 0 ? v + 360 : v;
 }
 
-// Great-circle initial bearing from point A to B (0..360 from North)
-function bearingGC(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
+// Great-circle initial bearing (forward azimuth) from A -> B
+function bearingGreatCircle(from: Loc, to: Loc) {
   const φ1 = toRad(from.lat);
   const φ2 = toRad(to.lat);
   const Δλ = toRad(to.lng - from.lng);
 
   const y = Math.sin(Δλ) * Math.cos(φ2);
   const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-
-  const θ = Math.atan2(y, x);
-  return (toDeg(θ) + 360) % 360;
+  return norm360(toDeg(Math.atan2(y, x)));
 }
 
-// Haversine distance km
-function distanceKm(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
+function haversineKm(a: Loc, b: Loc) {
   const R = 6371;
-  const φ1 = toRad(from.lat);
-  const φ2 = toRad(to.lat);
-  const Δφ = toRad(to.lat - from.lat);
-  const Δλ = toRad(to.lng - from.lng);
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lng - a.lng);
+  const la1 = toRad(a.lat);
+  const la2 = toRad(b.lat);
 
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(la1) * Math.cos(la2) * Math.sin(dLon / 2) ** 2;
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-// Smooth animation helper
-function useSmoothedAngle(target: number | null, smoothing = 0.18) {
-  const [value, setValue] = useState<number>(target ?? 0);
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+function formatKm(n: number) {
+  if (!Number.isFinite(n)) return "—";
+  if (n < 10) return `${n.toFixed(2)} km`;
+  if (n < 100) return `${n.toFixed(1)} km`;
+  return `${Math.round(n).toLocaleString()} km`;
+}
+
+export default function QiblaCompass() {
+  const [loc, setLoc] = useState<Loc | null>(null);
+  const [locStatus, setLocStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [locError, setLocError] = useState<string | null>(null);
+
+  const [heading, setHeading] = useState<number | null>(null);
+  const [compassStatus, setCompassStatus] = useState<"idle" | "enabled" | "denied" | "unsupported">("idle");
+  const [compassError, setCompassError] = useState<string | null>(null);
+
+  // Smooth heading (avoid jitter)
+  const headingRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (target == null) return;
-
-    const tick = () => {
-      setValue((prev) => {
-        // shortest-path interpolation around 360
-        const delta = ((target - prev + 540) % 360) - 180;
-        return (prev + delta * smoothing + 360) % 360;
-      });
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    };
-  }, [target, smoothing]);
-
-  return value;
-}
-
-type Props = {
-  // Optional: pass in already-known location; otherwise user clicks Locate
-  initialLocation?: { lat: number; lng: number; accuracy?: number } | null;
-};
-
-export default function QiblaCompass({ initialLocation = null }: Props) {
-  const [loc, setLoc] = useState<{ lat: number; lng: number; accuracy?: number } | null>(initialLocation);
-  const [status, setStatus] = useState<"idle" | "locating" | "ready" | "error">("idle");
-  const [err, setErr] = useState<string>("");
-
-  // Optional compass sensor (mobile)
-  const [hasCompass, setHasCompass] = useState<boolean>(false);
-  const [deviceHeading, setDeviceHeading] = useState<number | null>(null);
-
-  // Compute qibla bearing + distance from current location
   const qiblaBearing = useMemo(() => {
     if (!loc) return null;
-    return bearingGC({ lat: loc.lat, lng: loc.lng }, KAABA);
+    return bearingGreatCircle(loc, KAABA);
   }, [loc]);
 
-  const kmToKaaba = useMemo(() => {
+  const distanceKm = useMemo(() => {
     if (!loc) return null;
-    return distanceKm({ lat: loc.lat, lng: loc.lng }, KAABA);
+    return haversineKm(loc, KAABA);
   }, [loc]);
 
-  // Smooth pointer rotation
-  const smoothedPointer = useSmoothedAngle(qiblaBearing, 0.18);
+  const relativeAngle = useMemo(() => {
+    // Needle relative to top of phone/dial when heading available
+    if (qiblaBearing == null) return null;
+    if (heading == null) return qiblaBearing; // fallback: absolute from North (dial fixed)
+    return norm360(qiblaBearing - heading);
+  }, [qiblaBearing, heading]);
 
-  // If we have device heading, rotate dial to act like a compass (North anchored)
-  // Dial rotation: -heading (so N stays top as the phone rotates)
-  const smoothedDial = useSmoothedAngle(deviceHeading != null ? (360 - deviceHeading) % 360 : 0, 0.22);
+  const locateMe = useCallback(async () => {
+    setLocError(null);
+    setLocStatus("loading");
 
-  const locate = () => {
-    setErr("");
-    setStatus("locating");
-
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      setStatus("error");
-      setErr("Geolocation not supported in this browser.");
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setLocStatus("error");
+      setLocError("Geolocation not supported on this device/browser.");
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setLoc({
-          lat: p.coords.latitude,
-          lng: p.coords.longitude,
-          accuracy: p.coords.accuracy
-        });
-        setStatus("ready");
-      },
-      (e) => {
-        setStatus("error");
-        setErr(e.message || "Unable to fetch location.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
+    // IMPORTANT for iOS Safari: must be called from user gesture (button click). This function is.
+    const getPos = (opts: PositionOptions) =>
+      new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, opts);
+      });
 
-  // Compass sensor (best-effort)
-  useEffect(() => {
+    try {
+      // Try high accuracy first
+      const p = await getPos({ enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+      const next = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy };
+      setLoc(next);
+      setLocStatus("ok");
+      return;
+    } catch (e1: any) {
+      // Retry with lower accuracy, longer timeout (often helps iOS)
+      try {
+        const p = await getPos({ enableHighAccuracy: false, timeout: 25000, maximumAge: 0 });
+        const next = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy };
+        setLoc(next);
+        setLocStatus("ok");
+        return;
+      } catch (e2: any) {
+        const msg =
+          e2?.code === 1
+            ? "Location permission denied. Please allow location for this site in Safari settings."
+            : e2?.code === 2
+            ? "Location unavailable. Try moving to an open area and try again."
+            : e2?.code === 3
+            ? "Location request timed out. Try again."
+            : e2?.message || "Failed to get location.";
+
+        setLocStatus("error");
+        setLocError(msg);
+      }
+    }
+  }, []);
+
+  const enableCompass = useCallback(async () => {
+    setCompassError(null);
+
     if (typeof window === "undefined") return;
 
-    const anyWindow = window as any;
+    // If no sensor events exist
+    const hasDeviceOrientation =
+      "DeviceOrientationEvent" in window ||
+      "ondeviceorientation" in window ||
+      "ondeviceorientationabsolute" in window;
 
-    // iOS permission
-    async function maybeRequestIOSPermission() {
-      try {
-        const D = anyWindow.DeviceOrientationEvent;
-        if (D && typeof D.requestPermission === "function") {
-          // We only request permission after user interaction in many browsers.
-          // We'll not auto-call it here.
-          return;
-        }
-      } catch {}
+    if (!hasDeviceOrientation) {
+      setCompassStatus("unsupported");
+      setCompassError("Compass sensors not available.");
+      return;
     }
 
-    maybeRequestIOSPermission();
+    try {
+      // iOS requires explicit permission request via user gesture
+      const anyDO = DeviceOrientationEvent as any;
+      if (isIOS() && typeof anyDO?.requestPermission === "function") {
+        const res = await anyDO.requestPermission();
+        if (res !== "granted") {
+          setCompassStatus("denied");
+          setCompassError("Compass permission denied.");
+          return;
+        }
+      }
 
-    const handler = (e: DeviceOrientationEvent) => {
-      // alpha is rotation around z-axis (0..360). On many devices this maps to compass heading.
-      const alpha = (e as any).webkitCompassHeading ?? e.alpha;
+      setCompassStatus("enabled");
+    } catch (err: any) {
+      setCompassStatus("denied");
+      setCompassError(err?.message || "Compass permission denied.");
+    }
+  }, []);
 
-      if (typeof alpha === "number") {
-        setHasCompass(true);
-        // Normalize
-        setDeviceHeading((alpha + 360) % 360);
+  // Listen for compass updates only when enabled
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (compassStatus !== "enabled") return;
+
+    const onOrientation = (ev: any) => {
+      let nextHeading: number | null = null;
+
+      // iOS Safari provides webkitCompassHeading (0..360)
+      if (typeof ev?.webkitCompassHeading === "number") {
+        nextHeading = ev.webkitCompassHeading;
+      } else if (typeof ev?.alpha === "number") {
+        // Generic fallback: alpha is rotation around z-axis.
+        // Some browsers define alpha as clockwise degrees from north; others differ.
+        // We'll use 360 - alpha as a common mapping.
+        nextHeading = norm360(360 - ev.alpha);
+      }
+
+      if (nextHeading == null || !Number.isFinite(nextHeading)) return;
+
+      // Smoothing using rAF (lerp)
+      headingRef.current = nextHeading;
+
+      if (rafRef.current == null) {
+        const tick = () => {
+          rafRef.current = null;
+          const target = headingRef.current;
+          if (target == null) return;
+
+          setHeading((prev) => {
+            if (prev == null) return target;
+            // shortest-path interpolation
+            const diff = ((target - prev + 540) % 360) - 180;
+            const smoothed = norm360(prev + diff * 0.2); // adjust smoothing factor here
+            return smoothed;
+          });
+        };
+        rafRef.current = window.requestAnimationFrame(tick);
       }
     };
 
-    window.addEventListener("deviceorientationabsolute", handler as any, true);
-    window.addEventListener("deviceorientation", handler as any, true);
+    window.addEventListener("deviceorientationabsolute", onOrientation, true);
+    window.addEventListener("deviceorientation", onOrientation, true);
 
     return () => {
-      window.removeEventListener("deviceorientationabsolute", handler as any, true);
-      window.removeEventListener("deviceorientation", handler as any, true);
+      window.removeEventListener("deviceorientationabsolute", onOrientation, true);
+      window.removeEventListener("deviceorientation", onOrientation, true);
+      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     };
-  }, []);
+  }, [compassStatus]);
 
-  // UI numbers
+  // UI values
   const bearingText = qiblaBearing == null ? "—" : `${Math.round(qiblaBearing)}° from North`;
-  const distanceText = kmToKaaba == null ? "—" : `${kmToKaaba.toFixed(0)} km to Kaaba`;
-  const accuracyText =
-    loc?.accuracy != null ? `Accuracy ~${Math.round(loc.accuracy)}m` : "Accuracy —";
+  const headingText = heading == null ? "—" : `${Math.round(heading)}°`;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 soft-shadow">
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-slate-900">Qibla Direction</div>
-          <div className="mt-1 text-sm text-slate-600">{bearingText}</div>
-        </div>
+    <div className="space-y-4">
+      {/* Top info bar — fewer borders, mobile friendly */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 soft-shadow">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-900">Qibla Direction</div>
+            <div className="mt-1 text-sm text-slate-600">{bearingText}</div>
 
-        <button
-          type="button"
-          onClick={locate}
-          className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-800 transition"
-        >
-          Locate me
-        </button>
-      </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span
+                className={[
+                  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border",
+                  locStatus === "ok"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                    : "border-slate-200 bg-slate-50 text-slate-700"
+                ].join(" ")}
+              >
+                {locStatus === "ok"
+                  ? `Location acquired${loc?.accuracy ? ` · ±${Math.round(loc.accuracy)}m` : ""}`
+                  : locStatus === "loading"
+                  ? "Getting location…"
+                  : "Location not set"}
+              </span>
 
-      {/* Chips */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
-          {status === "ready" ? `Location acquired · ${accuracyText}` : status === "locating" ? "Locating…" : "Location not set"}
-        </span>
+              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700">
+                Heading: {headingText}
+              </span>
 
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-          {hasCompass ? "Compass sensor available" : "No compass sensor"}
-        </span>
-
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-          {distanceText}
-        </span>
-      </div>
-
-      {status === "error" ? (
-        <div className="mt-2 text-xs text-rose-700">{err}</div>
-      ) : null}
-
-      {/* Dial */}
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center justify-center">
-          <div className="relative w-[320px] max-w-full aspect-square">
-            {/* Outer ring */}
-            <div className="absolute inset-0 rounded-full border border-slate-200 bg-white" />
-
-            {/* Rotating compass face */}
-            <div
-              className="absolute inset-0"
-              style={{
-                transform: `rotate(${smoothedDial}deg)`,
-                transformOrigin: "50% 50%",
-                transition: "transform 120ms linear"
-              }}
-            >
-              {/* ticks + letters */}
-              <svg viewBox="0 0 200 200" className="absolute inset-0 h-full w-full">
-                {/* ticks */}
-                {Array.from({ length: 72 }).map((_, i) => {
-                  const angle = (i * 5 * Math.PI) / 180;
-                  const isMajor = i % 6 === 0; // every 30°
-                  const r1 = isMajor ? 92 : 96;
-                  const r2 = 100;
-                  const x1 = 100 + r1 * Math.sin(angle);
-                  const y1 = 100 - r1 * Math.cos(angle);
-                  const x2 = 100 + r2 * Math.sin(angle);
-                  const y2 = 100 - r2 * Math.cos(angle);
-                  return (
-                    <line
-                      key={i}
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke={isMajor ? "#cbd5e1" : "#e2e8f0"}
-                      strokeWidth={isMajor ? 2 : 1}
-                    />
-                  );
-                })}
-
-                {/* cardinal letters */}
-                <text x="100" y="22" textAnchor="middle" fontSize="14" fill="#0f172a" fontWeight="700">
-                  N
-                </text>
-                <text x="180" y="105" textAnchor="middle" fontSize="14" fill="#0f172a" fontWeight="700">
-                  E
-                </text>
-                <text x="100" y="190" textAnchor="middle" fontSize="14" fill="#0f172a" fontWeight="700">
-                  S
-                </text>
-                <text x="20" y="105" textAnchor="middle" fontSize="14" fill="#0f172a" fontWeight="700">
-                  W
-                </text>
-
-                {/* inner dotted circle */}
-                <circle cx="100" cy="100" r="62" fill="none" stroke="#e2e8f0" strokeDasharray="3 4" />
-              </svg>
+              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700">
+                {distanceKm == null ? "—" : `${formatKm(distanceKm)} to Kaaba`}
+              </span>
             </div>
 
-            {/* Qibla pointer (does NOT rotate with compass face) */}
-            <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{
-                transform: `rotate(${smoothedPointer}deg)`,
-                transformOrigin: "50% 50%",
-                transition: "transform 140ms ease-out"
-              }}
-            >
-              <div className="relative h-[70%] w-[10px]">
-                {/* needle */}
-                <div className="absolute left-1/2 -translate-x-1/2 top-0 h-full w-[6px] rounded-full bg-emerald-700 shadow" />
-                {/* tip */}
-                <div className="absolute left-1/2 -translate-x-1/2 -top-1 h-5 w-5 rounded-xl bg-emerald-700 shadow-sm flex items-center justify-center">
-                  <div className="h-2 w-2 rounded-full bg-amber-300" />
-                </div>
-                {/* tail */}
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-0 h-3 w-3 rounded-full bg-emerald-200 border border-emerald-300" />
-              </div>
-            </div>
+            {locStatus === "error" && locError ? (
+              <div className="mt-2 text-xs font-semibold text-rose-700">{locError}</div>
+            ) : null}
 
-            {/* center dot */}
-            <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900" />
+            {compassError ? (
+              <div className="mt-2 text-xs font-semibold text-amber-700">{compassError}</div>
+            ) : null}
+          </div>
+
+          {/* Buttons: wrap nicely on mobile, never overflow */}
+          <div className="shrink-0 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={locateMe}
+              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 transition whitespace-nowrap"
+            >
+              Locate me
+            </button>
+
+            <button
+              type="button"
+              onClick={enableCompass}
+              className={[
+                "rounded-xl px-3 py-2 text-xs font-semibold transition whitespace-nowrap",
+                compassStatus === "enabled"
+                  ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+              ].join(" ")}
+            >
+              {compassStatus === "enabled" ? "Compass enabled" : "Enable compass"}
+            </button>
           </div>
         </div>
+      </div>
 
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-slate-300" />
-            <span>{hasCompass ? "Compass enabled" : "Works without compass sensors"}</span>
-          </div>
+      {/* Compass dial — single clean frame, needle always visible */}
+      <div className="rounded-2xl border border-slate-200 bg-white soft-shadow p-4">
+        <div className="mx-auto max-w-md">
+          <CompassDial
+            relativeNeedleAngle={relativeAngle}
+            dialRotation={heading == null ? 0 : -heading}
+            hasLocation={!!loc}
+          />
 
-          <div className="tabular-nums">
-            {loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : "—"}
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-slate-300" />
+              Works without compass sensors
+            </span>
+            <span className="tabular-nums">
+              {loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : "—"}
+            </span>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+function CompassDial({
+  relativeNeedleAngle,
+  dialRotation,
+  hasLocation
+}: {
+  relativeNeedleAngle: number | null;
+  dialRotation: number;
+  hasLocation: boolean;
+}) {
+  // If location not available, keep needle hidden but show dial
+  const needleDeg = relativeNeedleAngle == null ? null : relativeNeedleAngle;
+
+  return (
+    <div className="relative aspect-square w-full rounded-2xl bg-slate-50 overflow-hidden">
+      {/* Soft dial background */}
+      <div className="absolute inset-0">
+        {/* Outer ring */}
+        <div className="absolute inset-4 rounded-full border border-slate-200 bg-white" />
+        {/* Inner dotted ring */}
+        <div className="absolute inset-[22%] rounded-full border border-dashed border-slate-200" />
+      </div>
+
+      {/* Rotate the dial with heading (if compass enabled) */}
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: `rotate(${dialRotation}deg)`,
+          transition: "transform 180ms ease-out"
+        }}
+      >
+        {/* Cardinal labels */}
+        <CardinalLabel pos="top" text="N" emphasis />
+        <CardinalLabel pos="right" text="E" />
+        <CardinalLabel pos="bottom" text="S" />
+        <CardinalLabel pos="left" text="W" />
+
+        {/* Tick marks */}
+        <Ticks />
+      </div>
+
+      {/* Needle (always on top, not affected by dial rotation) */}
+      {hasLocation && needleDeg != null ? (
+        <div
+          className="absolute inset-0"
+          style={{
+            transform: `rotate(${needleDeg}deg)`,
+            transition: "transform 180ms ease-out"
+          }}
+        >
+          <Needle />
+        </div>
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-xs font-semibold text-slate-500">Set your location to show needle</div>
+        </div>
+      )}
+
+      {/* Center cap */}
+      <div className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/90 ring-4 ring-white" />
+    </div>
+  );
+}
+
+function Needle() {
+  // Clean arrow needle: shaft + arrowhead, no extra frames
+  return (
+    <div className="absolute inset-0">
+      {/* shaft */}
+      <div className="absolute left-1/2 top-[18%] h-[58%] w-1 -translate-x-1/2 rounded-full bg-emerald-800 shadow-sm" />
+
+      {/* arrowhead */}
+      <div className="absolute left-1/2 top-[14%] -translate-x-1/2">
+        <div
+          className="h-0 w-0"
+          style={{
+            borderLeft: "10px solid transparent",
+            borderRight: "10px solid transparent",
+            borderBottom: "18px solid rgb(6 95 70)" // emerald-800
+          }}
+        />
+      </div>
+
+      {/* tail dot */}
+      <div className="absolute left-1/2 top-[78%] h-3 w-3 -translate-x-1/2 rounded-full bg-emerald-200 border border-emerald-300" />
+    </div>
+  );
+}
+
+function Ticks() {
+  const ticks = Array.from({ length: 60 }).map((_, i) => i); // 6° increments
+  return (
+    <div className="absolute inset-0">
+      {ticks.map((i) => {
+        const big = i % 5 === 0; // every 30°
+        return (
+          <div
+            key={i}
+            className="absolute left-1/2 top-1/2"
+            style={{ transform: `rotate(${i * 6}deg)` }}
+          >
+            <div
+              className={[
+                "absolute",
+                "-translate-x-1/2",
+                big ? "-translate-y-[130px] h-3 w-[2px] bg-slate-300" : "-translate-y-[128px] h-2 w-px bg-slate-200"
+              ].join(" ")}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CardinalLabel({
+  pos,
+  text,
+  emphasis
+}: {
+  pos: "top" | "right" | "bottom" | "left";
+  text: string;
+  emphasis?: boolean;
+}) {
+  const base =
+    "absolute text-sm font-semibold text-slate-700 select-none";
+  const emph = emphasis ? "text-slate-900" : "";
+
+  const style =
+    pos === "top"
+      ? "left-1/2 top-6 -translate-x-1/2"
+      : pos === "right"
+      ? "right-6 top-1/2 -translate-y-1/2"
+      : pos === "bottom"
+      ? "left-1/2 bottom-6 -translate-x-1/2"
+      : "left-6 top-1/2 -translate-y-1/2";
+
+  return <div className={[base, style, emph].join(" ")}>{text}</div>;
 }
