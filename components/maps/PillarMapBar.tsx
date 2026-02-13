@@ -2,24 +2,24 @@
 
 import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { PillarKey } from "@/lib/pillars";
 import MapsShell from "./MapsShell";
+import { PillarKey } from "@/lib/pillars";
 
 type Mode = "maps" | "qibla";
 
-// ✅ IMPORTANT: this prevents Leaflet from being imported during SSR/prerender
+// ✅ IMPORTANT: Leaflet must be loaded client-side only (prevents "window is not defined" on prerender)
 const LeafletMap = dynamic(() => import("./LeafletMap"), {
   ssr: false,
   loading: () => (
-    <div className="rounded-2xl overflow-hidden border border-slate-200 bg-white soft-shadow">
-      <div className="h-[260px] flex items-center justify-center text-sm text-slate-500">
-        Loading map…
-      </div>
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 soft-shadow">
+      <div className="text-sm font-semibold text-slate-900">Loading map…</div>
+      <div className="mt-1 text-sm text-slate-600">Preparing map tiles.</div>
     </div>
   )
 });
 
 export default function PillarMapBar({ active }: { active: PillarKey }) {
+  // Show only on Salah + Hajj for now
   const show = active === "salah" || active === "hajj";
   if (!show) return null;
 
@@ -29,8 +29,8 @@ export default function PillarMapBar({ active }: { active: PillarKey }) {
     if (active === "hajj") {
       return {
         title: "Hajj Map",
-        subtitle: "Key sites for Hajj (early version)",
-        center: { lat: 21.4225, lng: 39.8262 },
+        subtitle: "Key locations for the Hajj journey",
+        center: { lat: 21.4225, lng: 39.8262 }, // Makkah
         zoom: 12,
         markers: [
           { id: "kaaba", title: "Kaaba", description: "Masjid al-Haram", lat: 21.4225, lng: 39.8262 },
@@ -41,10 +41,11 @@ export default function PillarMapBar({ active }: { active: PillarKey }) {
       };
     }
 
+    // Salah default
     return {
       title: "Salah",
-      subtitle: "Maps + Qibla (coming soon)",
-      center: { lat: 21.4225, lng: 39.8262 },
+      subtitle: "Map and Qibla tools",
+      center: { lat: 21.4225, lng: 39.8262 }, // default to Makkah for now
       zoom: 4,
       markers: [
         {
@@ -60,30 +61,32 @@ export default function PillarMapBar({ active }: { active: PillarKey }) {
 
   const modes =
     active === "salah"
-      ? [
+      ? ([
           { key: "maps", label: "Maps" },
           { key: "qibla", label: "Qibla" }
-        ]
+        ] as const)
       : undefined;
 
   return (
-    <MapsShell
-      title={config.title}
-      subtitle={config.subtitle}
-      modes={modes}
-      activeMode={active === "salah" ? mode : undefined}
-      onModeChange={active === "salah" ? (k) => setMode(k as Mode) : undefined}
-    >
-      {active === "salah" && mode === "qibla" ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-sm font-semibold text-slate-900">Qibla (coming soon)</div>
-          <div className="mt-1 text-sm text-slate-600">
-            We’ll add a proper Qibla compass using your location (with permission).
+    <div className="container-page">
+      <MapsShell
+        title={config.title}
+        subtitle={config.subtitle}
+        modes={modes as any}
+        activeMode={active === "salah" ? mode : undefined}
+        onModeChange={active === "salah" ? (k) => setMode(k as Mode) : undefined}
+      >
+        {active === "salah" && mode === "qibla" ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 soft-shadow">
+            <div className="text-sm font-semibold text-slate-900">Qibla (coming soon)</div>
+            <div className="mt-1 text-sm text-slate-600">
+              We’ll add a proper Qibla compass using your location (with permission).
+            </div>
           </div>
-        </div>
-      ) : (
-        <LeafletMap center={config.center} zoom={config.zoom} markers={config.markers} height={260} />
-      )}
-    </MapsShell>
+        ) : (
+          <LeafletMap center={config.center} zoom={config.zoom} markers={config.markers} height={260} />
+        )}
+      </MapsShell>
+    </div>
   );
 }
