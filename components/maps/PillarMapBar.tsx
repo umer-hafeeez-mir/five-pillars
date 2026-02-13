@@ -2,13 +2,13 @@
 
 import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { PillarKey } from "@/lib/pillars";
 import MapsShell from "./MapsShell";
 import QiblaCompass from "./QiblaCompass";
+import { PillarKey } from "@/lib/pillars";
 
 type Mode = "maps" | "qibla";
 
-// IMPORTANT: Leaflet must be loaded client-side only
+// ✅ Important: dynamic import prevents SSR/window issues
 const LeafletMap = dynamic(() => import("./LeafletMap"), { ssr: false });
 
 export default function PillarMapBar({ active }: { active: PillarKey }) {
@@ -42,26 +42,25 @@ export default function PillarMapBar({ active }: { active: PillarKey }) {
     };
   }, [active]);
 
-  const modes =
-    active === "salah"
-      ? [
-          { key: "maps", label: "Maps" },
-          { key: "qibla", label: "Qibla" }
-        ]
-      : undefined;
-
   return (
     <MapsShell
       title={config.title}
       subtitle={config.subtitle}
-      modes={modes}
+      modes={
+        active === "salah"
+          ? [
+              { key: "maps", label: "Maps" },
+              { key: "qibla", label: "Qibla" }
+            ]
+          : undefined
+      }
       activeMode={active === "salah" ? mode : undefined}
       onModeChange={active === "salah" ? (k) => setMode(k as Mode) : undefined}
     >
       {active === "salah" && mode === "qibla" ? (
         <QiblaCompass />
       ) : (
-        <LeafletMap center={config.center} zoom={config.zoom} markers={config.markers} height={260} />
+        <LeafletMap center={config.center} zoom={config.zoom} markers={config.markers} height={320} />
       )}
     </MapsShell>
   );
