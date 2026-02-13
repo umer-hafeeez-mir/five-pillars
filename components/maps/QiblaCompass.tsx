@@ -10,7 +10,6 @@ function clampDeg(d: number) {
   const x = d % 360;
   return x < 0 ? x + 360 : x;
 }
-
 function toRad(d: number) {
   return (d * Math.PI) / 180;
 }
@@ -42,15 +41,13 @@ function distanceKm(from: Geo, to: Geo) {
   return R * c;
 }
 
-// Try to get compass heading (degrees from North)
+// Compass heading (degrees from North)
 function getCompassHeadingFromEvent(e: DeviceOrientationEvent): number | null {
-  // iOS Safari sometimes exposes webkitCompassHeading
-  // @ts-ignore
+  // @ts-ignore (iOS Safari)
   const ios = typeof e.webkitCompassHeading === "number" ? e.webkitCompassHeading : null;
   if (typeof ios === "number" && isFinite(ios)) return clampDeg(ios);
 
-  // Some browsers expose alpha where 0 = North, but it depends on screen orientation
-  // We keep it simple; if alpha exists, use it as a fallback (may be imperfect on some devices)
+  // Fallback: alpha exists but may vary across devices
   if (typeof e.alpha === "number" && isFinite(e.alpha)) {
     return clampDeg(360 - e.alpha);
   }
@@ -93,7 +90,7 @@ export default function QiblaCompass() {
   const [hasCompass, setHasCompass] = useState(false);
   const [heading, setHeading] = useState<number | null>(null);
 
-  // Smooth animation state
+  // Smoothed heading
   const animRef = useRef<number | null>(null);
   const [smoothHeading, setSmoothHeading] = useState<number | null>(null);
 
@@ -107,20 +104,20 @@ export default function QiblaCompass() {
     return distanceKm(geo, KAABA);
   }, [geo]);
 
-  // Smoothly animate heading changes (prevents jumpy compass)
   useEffect(() => {
     if (heading == null) return;
 
     let prev = smoothHeading ?? heading;
 
     const tick = () => {
-      // shortest rotation direction
       const target = heading;
+
+      // shortest arc
       let delta = target - prev;
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
 
-      prev = clampDeg(prev + delta * 0.12); // smoothing factor
+      prev = clampDeg(prev + delta * 0.12);
       setSmoothHeading(prev);
 
       animRef.current = window.requestAnimationFrame(tick);
@@ -134,7 +131,6 @@ export default function QiblaCompass() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heading]);
 
-  // Compass sensor hookup
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -152,10 +148,12 @@ export default function QiblaCompass() {
   const locate = async () => {
     try {
       if (typeof window === "undefined") return;
+
       if (!navigator.geolocation) {
         setStatus("unavailable");
         return;
       }
+
       setStatus("requesting");
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -177,30 +175,29 @@ export default function QiblaCompass() {
     }
   };
 
-  // If we do not have compass heading, compass still works as “bearing from North”
-  const displayHeading = hasCompass ? smoothHeading : 0; // rotate dial only if compass exists
+  const displayHeading = hasCompass ? smoothHeading : 0;
+
+  // Needle points to Qibla relative to heading (if compass present)
   const needleRotation = useMemo(() => {
     if (qiblaBearing == null) return 0;
-    // if we have compass, needle should rotate relative to device heading
-    // else, just point to bearing from North
     const h = hasCompass && smoothHeading != null ? smoothHeading : 0;
     return clampDeg(qiblaBearing - h);
   }, [qiblaBearing, hasCompass, smoothHeading]);
 
   const topLine = useMemo(() => {
     if (!qiblaBearing) return "—";
-    const deg = Math.round(qiblaBearing);
-    return `${deg}° from North`;
+    return `${Math.round(qiblaBearing)}° from North`;
   }, [qiblaBearing]);
 
   return (
     <div className="space-y-4">
-      {/* Header card (compact) */}
+      {/* Header strip */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 soft-shadow">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-sm font-semibold text-slate-900">Qibla Direction</div>
             <div className="mt-1 text-xs text-slate-600">{topLine}</div>
+
             <div className="mt-2 flex flex-wrap gap-2">
               <Chip tone={status === "ready" ? "good" : status === "denied" ? "warn" : "neutral"}>
                 {status === "ready"
@@ -217,7 +214,7 @@ export default function QiblaCompass() {
               </Chip>
 
               <Chip tone={hasCompass ? "good" : "neutral"}>
-                {hasCompass ? "Compass sensor" : "No compass sensor"}
+                {hasCompass ? "Compass active" : "No compass sensor"}
               </Chip>
 
               {kmToKaaba != null ? <Chip>{formatKm(kmToKaaba)} to Kaaba</Chip> : null}
@@ -238,14 +235,17 @@ export default function QiblaCompass() {
         </div>
       </div>
 
-      {/* Compass */}
+      {/* Compass card */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 soft-shadow">
-        <div className="mx-auto max-w-[360px]">
+        {/* ✅ FIX: make dial fill the card nicely */}
+        <div className="mx-auto w-full max-w-[520px]">
           <div className="relative aspect-square w-full">
             {/* Outer ring */}
             <div className="absolute inset-0 rounded-full border border-slate-200 bg-white shadow-sm" />
+            {/* Soft gradient to make it feel less empty */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white via-slate-50 to-white" />
 
-            {/* Ticks + labels rotate with heading (so “N” stays at top visually when compass is available) */}
+            {/* Ticks + letters rotate WITH heading so the dial behaves like a compass */}
             <div
               className="absolute inset-0"
               style={{
@@ -254,34 +254,32 @@ export default function QiblaCompass() {
               }}
             >
               {/* ticks */}
-              <div className="absolute inset-0 rounded-full">
-                {Array.from({ length: 60 }).map((_, i) => {
-                  const isMajor = i % 5 === 0;
-                  const isCardinal = i % 15 === 0;
-                  const len = isCardinal ? 14 : isMajor ? 10 : 6;
-                  return (
-                    <div
-                      key={i}
-                      className="absolute left-1/2 top-1/2"
-                      style={{
-                        transform: `rotate(${i * 6}deg) translateY(-48%)`,
-                        transformOrigin: "center"
-                      }}
-                    >
-                      <div
-                        className="rounded-full bg-slate-300"
-                        style={{
-                          width: isCardinal ? 2 : 1,
-                          height: len,
-                          transform: "translateX(-50%)"
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              {Array.from({ length: 60 }).map((_, i) => {
+                const isMajor = i % 5 === 0;
+                const isCardinal = i % 15 === 0;
 
-              {/* Cardinal letters */}
+                return (
+                  <div
+                    key={i}
+                    className="absolute left-1/2 top-1/2"
+                    style={{
+                      transform: `rotate(${i * 6}deg) translateY(-46%)`,
+                      transformOrigin: "center"
+                    }}
+                  >
+                    <div
+                      className={["rounded-full", isCardinal ? "bg-slate-500" : "bg-slate-300"].join(" ")}
+                      style={{
+                        width: isCardinal ? 2 : 1,
+                        height: isCardinal ? 16 : isMajor ? 11 : 7,
+                        transform: "translateX(-50%)"
+                      }}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* cardinal letters */}
               {[
                 { t: "N", deg: 0 },
                 { t: "E", deg: 90 },
@@ -291,11 +289,16 @@ export default function QiblaCompass() {
                 <div
                   key={c.t}
                   className="absolute left-1/2 top-1/2"
-                  style={{ transform: `rotate(${c.deg}deg) translateY(-46%)` }}
+                  style={{
+                    transform: `rotate(${c.deg}deg) translateY(-40%)`,
+                    transformOrigin: "center"
+                  }}
                 >
                   <div
-                    className="text-xs font-semibold text-slate-700"
-                    style={{ transform: "translateX(-50%) rotate(-" + c.deg + "deg)" }}
+                    className="text-sm font-bold text-slate-800"
+                    style={{
+                      transform: `translateX(-50%) rotate(-${c.deg}deg)`
+                    }}
                   >
                     {c.t}
                   </div>
@@ -303,17 +306,15 @@ export default function QiblaCompass() {
               ))}
             </div>
 
+            {/* Inner rings */}
+            <div className="absolute inset-[10%] rounded-full border border-slate-200/70" />
+            <div className="absolute inset-[22%] rounded-full border border-dashed border-slate-200" />
+
             {/* Center hub */}
-            <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-300 bg-white shadow" />
+            <div className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-300 bg-white shadow" />
+            <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-300" />
 
-            {/* Subtle north reference needle */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative h-[2px] w-[68%] bg-slate-200 rounded-full">
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-slate-300" />
-              </div>
-            </div>
-
-            {/* Qibla needle */}
+            {/* Qibla needle (responsive length!) */}
             <div
               className="absolute inset-0"
               style={{
@@ -321,35 +322,40 @@ export default function QiblaCompass() {
                 transition: "transform 90ms linear"
               }}
             >
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                {/* Needle shaft */}
-                <div className="relative">
-                  <div className="h-[4px] w-[240px] rounded-full bg-emerald-700 shadow-sm" />
-                  {/* Kaaba tip */}
-                  <div className="absolute right-[-2px] top-1/2 -translate-y-1/2">
-                    <div className="h-8 w-8 rounded-xl bg-emerald-700 shadow-md flex items-center justify-center">
-                      <span className="text-white text-[10px] font-extrabold">🕋</span>
+              {/* shaft */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[72%]">
+                <div className="relative h-[5px] w-full rounded-full bg-emerald-700 shadow-sm">
+                  {/* tail dot */}
+                  <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-emerald-100 border border-emerald-300" />
+
+                  {/* kaaba tip */}
+                  <div className="absolute right-[-10px] top-1/2 -translate-y-1/2">
+                    <div className="h-10 w-10 rounded-2xl bg-emerald-700 shadow-md flex items-center justify-center">
+                      <span className="text-white text-[12px] font-extrabold">🕋</span>
                     </div>
                   </div>
-                  {/* Tail dot */}
-                  <div className="absolute left-[-3px] top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-emerald-200 border border-emerald-300" />
                 </div>
               </div>
             </div>
 
-            {/* Inner circle */}
-            <div className="absolute inset-[14%] rounded-full border border-dashed border-slate-200" />
+            {/* Subtle “north reference” line */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="h-[2px] w-[78%] rounded-full bg-slate-200/80" />
+            </div>
           </div>
 
-          {/* Footer hint */}
+          {/* Footer */}
           <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
             <div className="flex items-center gap-2">
-              <span className={["inline-block h-2 w-2 rounded-full", hasCompass ? "bg-emerald-500" : "bg-slate-300"].join(" ")} />
+              <span
+                className={[
+                  "inline-block h-2 w-2 rounded-full",
+                  hasCompass ? "bg-emerald-500" : "bg-slate-300"
+                ].join(" ")}
+              />
               {hasCompass ? "Compass active (smooth)" : "Works without compass sensors"}
             </div>
-            <div className="tabular-nums">
-              {geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : "—"}
-            </div>
+            <div className="tabular-nums">{geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : "—"}</div>
           </div>
         </div>
       </div>
