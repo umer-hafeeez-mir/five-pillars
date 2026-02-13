@@ -11,6 +11,7 @@ import Accordion from "@/components/Accordion";
 import usePersistedState from "@/lib/usePersistedState";
 import { PILLARS, PillarKey } from "@/lib/pillars";
 import { calculateZakat, ZakatForm, GoldKarat, GoldHoldings } from "@/lib/zakat";
+import PillarMapBar from "@/components/maps/PillarMapBar";
 
 /* ---------------- Helpers ---------------- */
 
@@ -198,7 +199,7 @@ export default function Page() {
 
   // Mode + Guided flow state
   const [zakatMode, setZakatMode] = usePersistedState<ZakatMode>("fp_zakat_mode_v1", "guided");
-  const [guidedStep, setGuidedStep] = usePersistedState<GuidedStep>("fp_guided_step_v2", 0); // bumped key
+  const [guidedStep, setGuidedStep] = usePersistedState<GuidedStep>("fp_guided_step_v2", 0);
   const [ownsGold, setOwnsGold] = usePersistedState<boolean>("fp_guided_owns_gold_v1", true);
 
   // Summary visibility (both modes)
@@ -264,109 +265,97 @@ export default function Page() {
     }
   };
 
- /**
- * handleFetchOnline
- *
- * Calls:
- * GET /api/metal-rates?basis=gold|silver&currency=INR
- *
- * Your server route returns: { perGram, ... }
- * - perGram is the spot price per gram for XAU (gold) or XAG (silver)
- * - When gold basis is selected, we also derive 22k and 18k from 24k:
- *   22k ≈ 24k * 0.916, 18k = 24k * 0.75
- */
-const handleFetchOnline = async () => {
-  const mockGold24k = 14413.5;
-  const mockSilver = 165.25;
-
-  try {
-    const currency = "INR";
-    const basis = z.nisabBasis === "gold" ? "gold" : "silver";
-
-    const url = `/api/metal-rates?basis=${encodeURIComponent(basis)}&currency=${encodeURIComponent(
-      currency
-    )}`;
-
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`API responded ${res.status}`);
-
-    const json = await res.json().catch(() => null);
-    if (!json) throw new Error("Invalid JSON from rates API");
-
-    // ✅ IMPORTANT: your route returns `perGram`
-    let perGram: number | null = null;
-
-    if (json.perGram != null && !isNaN(Number(json.perGram))) perGram = Number(json.perGram);
-    else if (json.ratePerGram != null && !isNaN(Number(json.ratePerGram))) perGram = Number(json.ratePerGram);
-    else if (json.rate != null && !isNaN(Number(json.rate))) perGram = Number(json.rate);
-    else if (json.pricePerGram != null && !isNaN(Number(json.pricePerGram))) perGram = Number(json.pricePerGram);
-    else if (json.price != null && !isNaN(Number(json.price))) perGram = Number(json.price);
-
-    if (perGram === null && json.data) {
-      if (json.data.perGram != null && !isNaN(Number(json.data.perGram))) perGram = Number(json.data.perGram);
-      else if (json.data.ratePerGram != null && !isNaN(Number(json.data.ratePerGram)))
-        perGram = Number(json.data.ratePerGram);
-      else if (json.data.price != null && !isNaN(Number(json.data.price))) perGram = Number(json.data.price);
-    }
-
-    // last resort
-    if (perGram === null) {
-      console.warn("metal-rates: unable to parse response, falling back to mock");
-      perGram = basis === "gold" ? mockGold24k : mockSilver;
-    }
-
-    if (z.nisabBasis === "gold") {
-      const gold24 = perGram; // 24K spot per gram
-      const gold22 = gold24 * 0.916;
-      const gold18 = gold24 * 0.75;
-
-      setZ((s) => ({
-        ...s,
-        goldHoldings: {
-          ...(s.goldHoldings ?? defaultGoldHoldings()),
-          "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: gold24 },
-          "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: gold22 },
-          "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: gold18 }
-          // custom left untouched
-        }
-      }));
-    } else {
-      // silverRate is typed number | ""
-      setZ((s) => ({ ...s, silverRate: perGram }));
-    }
-
-    setLastFetchedAt(Date.now());
-  } catch (err) {
-    console.error("Failed to fetch metal rates:", err);
-
-    // graceful fallback so UX still works
-    if (z.nisabBasis === "gold") {
-      const gold24 = mockGold24k;
-      const gold22 = gold24 * 0.916;
-      const gold18 = gold24 * 0.75;
-
-      setZ((s) => ({
-        ...s,
-        goldHoldings: {
-          ...(s.goldHoldings ?? defaultGoldHoldings()),
-          "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: gold24 },
-          "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: gold22 },
-          "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: gold18 }
-        }
-      }));
-    } else {
-      setZ((s) => ({ ...s, silverRate: mockSilver }));
-    }
-
-    setLastFetchedAt(Date.now());
+  /**
+   * handleFetchOnline
+   *
+   * Calls:
+   * GET /api/metal-rates?basis=gold|silver&currency=INR
+   */
+  const handleFetchOnline = async () => {
+    const mockGold24k = 14413.5;
+    const mockSilver = 165.25;
 
     try {
-      alert("Could not fetch live rates; using a fallback estimate. You can still edit the rate manually.");
-    } catch {}
-  }
-};
+      const currency = "INR";
+      const basis = z.nisabBasis === "gold" ? "gold" : "silver";
 
+      const url = `/api/metal-rates?basis=${encodeURIComponent(basis)}&currency=${encodeURIComponent(
+        currency
+      )}`;
 
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`API responded ${res.status}`);
+
+      const json = await res.json().catch(() => null);
+      if (!json) throw new Error("Invalid JSON from rates API");
+
+      let perGram: number | null = null;
+
+      if (json.perGram != null && !isNaN(Number(json.perGram))) perGram = Number(json.perGram);
+      else if (json.ratePerGram != null && !isNaN(Number(json.ratePerGram))) perGram = Number(json.ratePerGram);
+      else if (json.rate != null && !isNaN(Number(json.rate))) perGram = Number(json.rate);
+      else if (json.pricePerGram != null && !isNaN(Number(json.pricePerGram))) perGram = Number(json.pricePerGram);
+      else if (json.price != null && !isNaN(Number(json.price))) perGram = Number(json.price);
+
+      if (perGram === null && json.data) {
+        if (json.data.perGram != null && !isNaN(Number(json.data.perGram))) perGram = Number(json.data.perGram);
+        else if (json.data.ratePerGram != null && !isNaN(Number(json.data.ratePerGram)))
+          perGram = Number(json.data.ratePerGram);
+        else if (json.data.price != null && !isNaN(Number(json.data.price))) perGram = Number(json.data.price);
+      }
+
+      if (perGram === null) {
+        console.warn("metal-rates: unable to parse response, falling back to mock");
+        perGram = basis === "gold" ? mockGold24k : mockSilver;
+      }
+
+      if (z.nisabBasis === "gold") {
+        const gold24 = perGram;
+        const gold22 = gold24 * 0.916;
+        const gold18 = gold24 * 0.75;
+
+        setZ((s) => ({
+          ...s,
+          goldHoldings: {
+            ...(s.goldHoldings ?? defaultGoldHoldings()),
+            "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: gold24 },
+            "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: gold22 },
+            "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: gold18 }
+          }
+        }));
+      } else {
+        setZ((s) => ({ ...s, silverRate: perGram }));
+      }
+
+      setLastFetchedAt(Date.now());
+    } catch (err) {
+      console.error("Failed to fetch metal rates:", err);
+
+      if (z.nisabBasis === "gold") {
+        const gold24 = mockGold24k;
+        const gold22 = gold24 * 0.916;
+        const gold18 = gold24 * 0.75;
+
+        setZ((s) => ({
+          ...s,
+          goldHoldings: {
+            ...(s.goldHoldings ?? defaultGoldHoldings()),
+            "24k": { ...(s.goldHoldings?.["24k"] ?? { grams: "", rate: "" }), rate: gold24 },
+            "22k": { ...(s.goldHoldings?.["22k"] ?? { grams: "", rate: "" }), rate: gold22 },
+            "18k": { ...(s.goldHoldings?.["18k"] ?? { grams: "", rate: "" }), rate: gold18 }
+          }
+        }));
+      } else {
+        setZ((s) => ({ ...s, silverRate: mockSilver }));
+      }
+
+      setLastFetchedAt(Date.now());
+
+      try {
+        alert("Could not fetch live rates; using a fallback estimate. You can still edit the rate manually.");
+      } catch {}
+    }
+  };
 
   const toggleSection = (section: Exclude<ZakatSection, null>) => {
     setOpenSection((curr) => (curr === section ? null : section));
@@ -503,35 +492,34 @@ const handleFetchOnline = async () => {
       </header>
 
       <section className="container-page pb-24">
-       <PillarHeader
-  title={
-    active === "zakat" ? (
-      <span className="relative inline-flex items-center">
-        {/* Main title */}
-        <span className="text-center">Calculate Zakat</span>
+        <PillarHeader
+          title={
+            active === "zakat" ? (
+              <span className="relative inline-flex items-center">
+                <span className="text-center">Calculate Zakat</span>
+                <span
+                  className={[
+                    "ml-3",
+                    "inline-flex items-center rounded-full",
+                    "border border-amber-200 bg-amber-50",
+                    "px-2.5 py-0.5",
+                    "text-[11px] font-semibold text-amber-900"
+                  ].join(" ")}
+                >
+                  In Early Access
+                </span>
+              </span>
+            ) : (
+              pillar.title
+            )
+          }
+          subtitle={pillar.subtitle}
+          icon={pillar.icon}
+          hideIcon={active === "zakat"}
+        />
 
-        {/* Early access tag nudged right */}
-        <span
-          className={[
-            "ml-3",                // ← spacing to the right
-            "inline-flex items-center rounded-full",
-            "border border-amber-200 bg-amber-50",
-            "px-2.5 py-0.5",
-            "text-[11px] font-semibold text-amber-900"
-          ].join(" ")}
-        >
-          In Early Access
-        </span>
-      </span>
-    ) : (
-      pillar.title
-    )
-  }
-  subtitle={pillar.subtitle}
-  icon={pillar.icon}
-  hideIcon={active === "zakat"}
-/>
-
+        {/* ✅ Persistent map area ONLY for Salah + Hajj */}
+        {(active === "salah" || active === "hajj") && <PillarMapBar active={active} />}
 
         {/* Non-zakat pillars unchanged */}
         {active !== "zakat" ? (
@@ -552,7 +540,7 @@ const handleFetchOnline = async () => {
                   onClick={() => {
                     setZakatMode("guided");
                     setShowSummary(false);
-                    if (guidedStep < 0) setGuidedStep(0);
+                    if (guidedStep < 0) setGuidedStep(0 as GuidedStep);
                   }}
                   className={[
                     "px-4 py-2 text-sm font-semibold rounded-lg transition",
@@ -581,7 +569,7 @@ const handleFetchOnline = async () => {
               </div>
             </div>
 
-            {/* SUMMARY (used by both modes) */}
+            {/* ================= SUMMARY (both modes) ================= */}
             {showSummary ? (
               <div className="mt-6 max-w-3xl mx-auto">
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
@@ -662,7 +650,7 @@ const handleFetchOnline = async () => {
                       type="button"
                       onClick={() => {
                         setShowSummary(false);
-                        if (zakatMode === "guided") setGuidedStep((s) => (s === 0 ? 1 : s));
+                        if (zakatMode === "guided") setGuidedStep(1);
                       }}
                       className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-800 transition"
                     >
@@ -671,7 +659,7 @@ const handleFetchOnline = async () => {
                   </div>
                 </div>
 
-                {/* Sticky buttons below summary: Share + Reset */}
+                {/* ✅ Summary bar must include Share + Reset (restored) */}
                 <BottomBar>
                   <button
                     type="button"
@@ -735,7 +723,9 @@ const handleFetchOnline = async () => {
                     </p>
 
                     <div className="mt-4">
-                      <div className="text-sm font-semibold text-slate-900">{manualRateLabel} <span className="text-slate-500">(Enter today’s rate)</span></div>
+                      <div className="text-sm font-semibold text-slate-900">
+                        {manualRateLabel} <span className="text-slate-500">(Enter today’s rate)</span>
+                      </div>
                       <div className="mt-2">
                         <Field
                           label=""
@@ -971,7 +961,7 @@ const handleFetchOnline = async () => {
                   </div>
                 </Accordion>
 
-                {/* POWER USERS bottom buttons: Calculate Zakat + Share + Reset */}
+                {/* ✅ POWER USERS bottom buttons restored/kept */}
                 <BottomBar>
                   <button
                     type="button"
@@ -1035,8 +1025,10 @@ const handleFetchOnline = async () => {
                 {guidedStep === 1 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab </div>
-                    <div className="mt-1 text-sm text-slate-600">Do you want to calculate Zakat based on silver or gold?</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab</div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      Do you want to calculate Zakat based on silver or gold?
+                    </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
@@ -1167,7 +1159,7 @@ const handleFetchOnline = async () => {
                 {guidedStep === 3 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">3) Add Cash in Hand and bank</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">3) Add Cash in hand and bank</div>
                     <div className="mt-1 text-sm text-slate-600">
                       Add the money you currently have available including cash in hand and funds in your bank accounts.
                     </div>
@@ -1208,13 +1200,13 @@ const handleFetchOnline = async () => {
                   </div>
                 ) : null}
 
-                {/* ✅ NEW Step 4: Do you own gold? */}
+                {/* Step 4: Own gold? */}
                 {guidedStep === 4 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
                     <div className="mt-2 text-base font-semibold text-slate-900">4) Do you own gold?</div>
                     <div className="mt-1 text-sm text-slate-600">
-                      If you don’t own gold, we willl skip gold inputs and only ask about silver.
+                      If you don’t own gold, we will skip gold inputs and only ask about silver.
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
@@ -1263,57 +1255,54 @@ const handleFetchOnline = async () => {
                   </div>
                 ) : null}
 
-                {/* Step 5: Metals (✅ inline Yes/No toggle inside this step too) */}
+                {/* Step 5: Metals */}
                 {guidedStep === 5 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">5) Add Gold and Silver Details</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">5) Add Gold and Silver details</div>
                     <div className="mt-1 text-sm text-slate-600">
                       Add details of the gold and silver you own. You can toggle gold on or off here at any time.
                     </div>
 
                     <div className="mt-4 space-y-4">
-                         {/* Inline toggle (compact segmented control) */}
-                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                          <div className="text-xs font-semibold text-slate-700">Do you own gold?</div>
-                        
-                          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-                            <button
-                              type="button"
-                              onClick={() => setOwnsGold(true)}
-                              aria-pressed={ownsGold}
-                              className={[
-                                "px-3 py-1.5 text-xs font-semibold rounded-md transition",
-                                ownsGold
-                                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                                  : "text-slate-700 hover:bg-slate-50"
-                              ].join(" ")}
-                            >
-                              Yes
-                            </button>
-                        
-                            <button
-                              type="button"
-                              onClick={() => setOwnsGold(false)}
-                              aria-pressed={!ownsGold}
-                              className={[
-                                "px-3 py-1.5 text-xs font-semibold rounded-md transition",
-                                !ownsGold
-                                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                                  : "text-slate-700 hover:bg-slate-50"
-                              ].join(" ")}
-                            >
-                              No
-                            </button>
-                          </div>
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div className="text-xs font-semibold text-slate-700">Do you own gold?</div>
+
+                        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => setOwnsGold(true)}
+                            aria-pressed={ownsGold}
+                            className={[
+                              "px-3 py-1.5 text-xs font-semibold rounded-md transition",
+                              ownsGold
+                                ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                : "text-slate-700 hover:bg-slate-50"
+                            ].join(" ")}
+                          >
+                            Yes
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setOwnsGold(false)}
+                            aria-pressed={!ownsGold}
+                            className={[
+                              "px-3 py-1.5 text-xs font-semibold rounded-md transition",
+                              !ownsGold
+                                ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                : "text-slate-700 hover:bg-slate-50"
+                            ].join(" ")}
+                          >
+                            No
+                          </button>
                         </div>
+                      </div>
 
-
-                      {/* Gold section (conditional) */}
                       {ownsGold ? (
                         <div className="space-y-3">
                           <div>
-                            <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold Purity</div>
+                            <div className="text-xs font-semibold tracking-wide text-slate-500">Select Gold purity</div>
                             <div className="mt-2 grid grid-cols-4 gap-2">
                               {(["24k", "22k", "18k", "custom"] as const).map((k) => (
                                 <button
@@ -1375,7 +1364,6 @@ const handleFetchOnline = async () => {
                         </div>
                       )}
 
-                      {/* Silver (always shown) */}
                       <div className="space-y-3">
                         <Field
                           label="Silver (grams)"
@@ -1414,13 +1402,13 @@ const handleFetchOnline = async () => {
                   </div>
                 ) : null}
 
-                {/* Step 6: Other */}
+                {/* ✅ Step 6: Other assets (RESTORED) */}
                 {guidedStep === 6 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">6) Add Other Asset Details</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">6) Add other assets</div>
                     <div className="mt-1 text-sm text-slate-600">
-                      Add investments, business assets, and money lent.
+                      Include investments, business assets, and money you’ve lent (expected to receive back).
                     </div>
 
                     <div className="mt-4 space-y-3">
@@ -1466,12 +1454,14 @@ const handleFetchOnline = async () => {
                   </div>
                 ) : null}
 
-                {/* Step 7: Deductions + Calculate */}
+                {/* ✅ Step 7: Deductions + Calculate (RESTORED) */}
                 {guidedStep === 7 ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 soft-shadow">
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">7) Add Deduction Details</div>
-                    <div className="mt-1 text-sm text-slate-600">Add debts, loans or liabilities you must repay soon.</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">7) Add deductions</div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      Add debts and liabilities you must repay soon.
+                    </div>
 
                     <div className="mt-4 space-y-3">
                       <Field
@@ -1491,10 +1481,20 @@ const handleFetchOnline = async () => {
                       >
                         Back
                       </button>
+
                       <button
                         type="button"
-                        onClick={() => setShowSummary(true)}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                        disabled={!isRateValid}
+                        onClick={() => {
+                          if (!isRateValid) return;
+                          setShowSummary(true);
+                        }}
+                        className={[
+                          "rounded-xl px-5 py-2.5 text-sm font-semibold transition",
+                          !isRateValid
+                            ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                            : "bg-emerald-800 hover:bg-emerald-900 text-white"
+                        ].join(" ")}
                       >
                         Calculate Zakat
                       </button>
@@ -1502,23 +1502,60 @@ const handleFetchOnline = async () => {
                   </div>
                 ) : null}
 
-                {/* GUIDED FLOW bottom buttons: Share + Reset */}
-                <BottomBar>
-                  <button
-                    type="button"
-                    onClick={handleShare}
-                    className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
-                  >
-                    Share
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetZakatState}
-                    className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
-                  >
-                    Reset
-                  </button>
-                </BottomBar>
+                {/* ✅ Guided flow: keep Share + Reset ALWAYS (restored) */}
+                {guidedStep !== 0 ? (
+                  guidedStep === 7 ? (
+                    <BottomBar>
+                      <button
+                        type="button"
+                        disabled={!isRateValid}
+                        onClick={() => {
+                          if (!isRateValid) return;
+                          setShowSummary(true);
+                        }}
+                        className={[
+                          "w-full rounded-xl py-3 font-semibold transition",
+                          !isRateValid
+                            ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                            : "bg-emerald-800 hover:bg-emerald-900 text-white"
+                        ].join(" ")}
+                      >
+                        Calculate Zakat
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleShare}
+                        className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                      >
+                        Share
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetZakatState}
+                        className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
+                      >
+                        Reset
+                      </button>
+                    </BottomBar>
+                  ) : (
+                    <BottomBar>
+                      <button
+                        type="button"
+                        onClick={handleShare}
+                        className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                      >
+                        Share
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetZakatState}
+                        className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 font-semibold transition"
+                      >
+                        Reset
+                      </button>
+                    </BottomBar>
+                  )
+                ) : null}
               </div>
             )}
           </>
