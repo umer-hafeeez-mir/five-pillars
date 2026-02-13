@@ -1,308 +1,358 @@
-
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-type LatLng = { lat: number; lng: number };
+type Geo = { lat: number; lng: number; accuracy?: number };
 
-const KAABA: LatLng = { lat: 21.422487, lng: 39.826206 };
+const KAABA = { lat: 21.4225, lng: 39.8262 };
 
-// ---------- Math helpers ----------
-const toRad = (deg: number) => (deg * Math.PI) / 180;
-const toDeg = (rad: number) => (rad * 180) / Math.PI;
-
-function normalizeDeg(d: number) {
-  return ((d % 360) + 360) % 360;
+function clampDeg(d: number) {
+  const x = d % 360;
+  return x < 0 ? x + 360 : x;
 }
 
-function shortestAngleDelta(from: number, to: number) {
-  const a = normalizeDeg(from);
-  const b = normalizeDeg(to);
-  let d = b - a;
-  if (d > 180) d -= 360;
-  if (d <= -180) d += 360;
-  return d;
+function toRad(d: number) {
+  return (d * Math.PI) / 180;
+}
+function toDeg(r: number) {
+  return (r * 180) / Math.PI;
 }
 
-/**
- * Great-circle initial bearing from `from` to `to`.
- * Returns degrees from North, clockwise. (0=N, 90=E)
- */
-function bearingGreatCircle(from: LatLng, to: LatLng) {
+// Great-circle initial bearing from point A to point B
+function bearingDeg(from: Geo, to: Geo) {
   const φ1 = toRad(from.lat);
   const φ2 = toRad(to.lat);
   const Δλ = toRad(to.lng - from.lng);
 
   const y = Math.sin(Δλ) * Math.cos(φ2);
   const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-  return normalizeDeg(toDeg(Math.atan2(y, x)));
+
+  return clampDeg(toDeg(Math.atan2(y, x)));
 }
 
-function hasWindow() {
-  return typeof window !== "undefined";
+// Haversine distance (km)
+function distanceKm(from: Geo, to: Geo) {
+  const R = 6371;
+  const dLat = toRad(to.lat - from.lat);
+  const dLng = toRad(to.lng - from.lng);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Try to get compass heading (degrees from North)
+function getCompassHeadingFromEvent(e: DeviceOrientationEvent): number | null {
+  // iOS Safari sometimes exposes webkitCompassHeading
+  // @ts-ignore
+  const ios = typeof e.webkitCompassHeading === "number" ? e.webkitCompassHeading : null;
+  if (typeof ios === "number" && isFinite(ios)) return clampDeg(ios);
+
+  // Some browsers expose alpha where 0 = North, but it depends on screen orientation
+  // We keep it simple; if alpha exists, use it as a fallback (may be imperfect on some devices)
+  if (typeof e.alpha === "number" && isFinite(e.alpha)) {
+    return clampDeg(360 - e.alpha);
+  }
+
+  return null;
+}
+
+function formatKm(km: number) {
+  if (!isFinite(km)) return "—";
+  if (km >= 1000) return `${(km / 1000).toFixed(2)}k km`;
+  return `${km.toFixed(1)} km`;
+}
+
+function Chip({
+  children,
+  tone = "neutral"
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "good" | "warn";
+}) {
+  const cls =
+    tone === "good"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : tone === "warn"
+      ? "border-amber-200 bg-amber-50 text-amber-900"
+      : "border-slate-200 bg-slate-50 text-slate-700";
+  return (
+    <span className={["inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold", cls].join(" ")}>
+      {children}
+    </span>
+  );
 }
 
 export default function QiblaCompass() {
-  const [loc, setLoc] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
-  const [geoStatus, setGeoStatus] = useState<string>("Getting your location…");
+  const [geo, setGeo] = useState<Geo | null>(null);
+  const [status, setStatus] = useState<
+    "idle" | "requesting" | "ready" | "denied" | "unavailable" | "error"
+  >("idle");
 
-  // Device heading (0..360 where 0 is North)
-  const [deviceHeading, setDeviceHeading] = useState<number | null>(null);
-  const [headingStatus, setHeadingStatus] = useState<string>("");
+  const [hasCompass, setHasCompass] = useState(false);
+  const [heading, setHeading] = useState<number | null>(null);
 
-  // Smooth UI rotation angle for arrow
-  const [uiAngle, setUiAngle] = useState<number>(0);
-  const rafRef = useRef<number | null>(null);
-  const targetRef = useRef<number>(0);
+  // Smooth animation state
+  const animRef = useRef<number | null>(null);
+  const [smoothHeading, setSmoothHeading] = useState<number | null>(null);
 
   const qiblaBearing = useMemo(() => {
-    if (!loc) return null;
-    return bearingGreatCircle({ lat: loc.lat, lng: loc.lng }, KAABA);
-  }, [loc]);
+    if (!geo) return null;
+    return bearingDeg(geo, KAABA);
+  }, [geo]);
 
-  /**
-   * If we have device heading:
-   *   arrow shows "turn this way" (relative bearing)
-   * Else:
-   *   arrow points to absolute direction from North (still useful)
-   */
-  const arrowAngle = useMemo(() => {
-    if (qiblaBearing == null) return null;
-    if (deviceHeading == null) return qiblaBearing;
-    return normalizeDeg(qiblaBearing - deviceHeading);
-  }, [qiblaBearing, deviceHeading]);
+  const kmToKaaba = useMemo(() => {
+    if (!geo) return null;
+    return distanceKm(geo, KAABA);
+  }, [geo]);
 
-  const requestLocation = () => {
-    if (!hasWindow()) return;
-
-    if (!navigator.geolocation) {
-      setGeoStatus("Geolocation not supported on this device/browser.");
-      return;
-    }
-
-    setGeoStatus("Fetching your location…");
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLoc({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy
-        });
-        setGeoStatus("Location acquired.");
-      },
-      (err) => {
-        setGeoStatus(
-          err.code === err.PERMISSION_DENIED
-            ? "Location permission denied. Please allow location to use Qibla."
-            : "Could not fetch location. Try again."
-        );
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
-    );
-  };
-
-  // Ask location once on mount
+  // Smoothly animate heading changes (prevents jumpy compass)
   useEffect(() => {
-    requestLocation();
+    if (heading == null) return;
+
+    let prev = smoothHeading ?? heading;
+
+    const tick = () => {
+      // shortest rotation direction
+      const target = heading;
+      let delta = target - prev;
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+
+      prev = clampDeg(prev + delta * 0.12); // smoothing factor
+      setSmoothHeading(prev);
+
+      animRef.current = window.requestAnimationFrame(tick);
+    };
+
+    animRef.current = window.requestAnimationFrame(tick);
+    return () => {
+      if (animRef.current) window.cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [heading]);
 
-  // Device orientation / heading (best effort, safe for SSR)
+  // Compass sensor hookup
   useEffect(() => {
-    if (!hasWindow()) return;
-
-    if (!("DeviceOrientationEvent" in window)) {
-      setHeadingStatus("Compass not available (device sensors unsupported).");
-      return;
-    }
-
-    // iOS requires permission via requestPermission()
-    // @ts-ignore
-    if (typeof window.DeviceOrientationEvent?.requestPermission === "function") {
-      setHeadingStatus("Tap “Enable compass” for live heading.");
-      return;
-    }
-
-    setHeadingStatus("Compass enabled.");
+    if (typeof window === "undefined") return;
 
     const handler = (e: DeviceOrientationEvent) => {
-      // iOS Safari sometimes provides webkitCompassHeading
-      // @ts-ignore
-      const iosHeading = typeof e.webkitCompassHeading === "number" ? e.webkitCompassHeading : null;
-
-      const alpha = typeof e.alpha === "number" ? e.alpha : null;
-
-      let h: number | null = null;
-      if (iosHeading != null) h = iosHeading;
-      else if (alpha != null) h = normalizeDeg(360 - alpha);
-
-      if (h != null && Number.isFinite(h)) setDeviceHeading(h);
+      const h = getCompassHeadingFromEvent(e);
+      if (h == null) return;
+      setHasCompass(true);
+      setHeading(h);
     };
 
     window.addEventListener("deviceorientation", handler, true);
-    return () => window.removeEventListener("deviceorientation", handler, true);
+    return () => window.removeEventListener("deviceorientation", handler as any, true);
   }, []);
 
-  const requestCompassPermission = async () => {
-    if (!hasWindow()) return;
-
+  const locate = async () => {
     try {
-      // @ts-ignore
-      const req = window.DeviceOrientationEvent?.requestPermission;
-      if (typeof req !== "function") {
-        setHeadingStatus("Compass already enabled (or not required).");
+      if (typeof window === "undefined") return;
+      if (!navigator.geolocation) {
+        setStatus("unavailable");
         return;
       }
-
-      // @ts-ignore
-      const res = await req();
-      if (res !== "granted") {
-        setHeadingStatus("Compass permission denied.");
-        return;
-      }
-
-      setHeadingStatus("Compass enabled.");
-
-      const handler = (e: DeviceOrientationEvent) => {
-        // @ts-ignore
-        const iosHeading = typeof e.webkitCompassHeading === "number" ? e.webkitCompassHeading : null;
-        const alpha = typeof e.alpha === "number" ? e.alpha : null;
-
-        let h: number | null = null;
-        if (iosHeading != null) h = iosHeading;
-        else if (alpha != null) h = normalizeDeg(360 - alpha);
-
-        if (h != null && Number.isFinite(h)) setDeviceHeading(h);
-      };
-
-      window.addEventListener("deviceorientation", handler, true);
-      return () => window.removeEventListener("deviceorientation", handler, true);
+      setStatus("requesting");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGeo({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy
+          });
+          setStatus("ready");
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) setStatus("denied");
+          else setStatus("error");
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 1000 }
+      );
     } catch {
-      setHeadingStatus("Unable to enable compass.");
+      setStatus("error");
     }
   };
 
-  // Smoothly animate uiAngle -> arrowAngle
-  useEffect(() => {
-    if (!hasWindow()) return;
-    if (arrowAngle == null) return;
+  // If we do not have compass heading, compass still works as “bearing from North”
+  const displayHeading = hasCompass ? smoothHeading : 0; // rotate dial only if compass exists
+  const needleRotation = useMemo(() => {
+    if (qiblaBearing == null) return 0;
+    // if we have compass, needle should rotate relative to device heading
+    // else, just point to bearing from North
+    const h = hasCompass && smoothHeading != null ? smoothHeading : 0;
+    return clampDeg(qiblaBearing - h);
+  }, [qiblaBearing, hasCompass, smoothHeading]);
 
-    targetRef.current = arrowAngle;
-
-    const tick = () => {
-      setUiAngle((curr) => {
-        const target = targetRef.current;
-        const delta = shortestAngleDelta(curr, target);
-        return normalizeDeg(curr + delta * 0.12); // smoothing
-      });
-
-      rafRef.current = window.requestAnimationFrame(tick);
-    };
-
-    if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
-    rafRef.current = window.requestAnimationFrame(tick);
-
-    return () => {
-      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
-    };
-  }, [arrowAngle]);
-
-  const directionText = useMemo(() => {
-    if (qiblaBearing == null) return "—";
-    return `${Math.round(qiblaBearing)}° from North`;
+  const topLine = useMemo(() => {
+    if (!qiblaBearing) return "—";
+    const deg = Math.round(qiblaBearing);
+    return `${deg}° from North`;
   }, [qiblaBearing]);
 
-  const relativeText = useMemo(() => {
-    if (qiblaBearing == null || deviceHeading == null) return null;
-    const rel = normalizeDeg(qiblaBearing - deviceHeading);
-    return `Turn ${Math.round(rel)}°`;
-  }, [qiblaBearing, deviceHeading]);
-
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 soft-shadow">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-slate-900">Qibla Direction</div>
-          <div className="mt-1 text-sm text-slate-600">
-            {qiblaBearing == null ? "Calculating…" : directionText}
-            {relativeText ? <span className="text-slate-500"> · {relativeText}</span> : null}
-          </div>
-        </div>
+    <div className="space-y-4">
+      {/* Header card (compact) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 soft-shadow">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-slate-900">Qibla Direction</div>
+            <div className="mt-1 text-xs text-slate-600">{topLine}</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Chip tone={status === "ready" ? "good" : status === "denied" ? "warn" : "neutral"}>
+                {status === "ready"
+                  ? `Location acquired${geo?.accuracy ? ` · ±${Math.round(geo.accuracy)}m` : ""}`
+                  : status === "requesting"
+                  ? "Getting location…"
+                  : status === "denied"
+                  ? "Location permission denied"
+                  : status === "unavailable"
+                  ? "Geolocation unavailable"
+                  : status === "error"
+                  ? "Could not get location"
+                  : "Tap Locate me"}
+              </Chip>
 
-        <button
-          type="button"
-          onClick={requestLocation}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-          title="Locate me"
-        >
-          Locate me
-        </button>
-      </div>
+              <Chip tone={hasCompass ? "good" : "neutral"}>
+                {hasCompass ? "Compass sensor" : "No compass sensor"}
+              </Chip>
 
-      <div className="mt-3 text-xs text-slate-500">
-        {geoStatus}
-        {loc?.accuracy ? ` · Accuracy ~${Math.round(loc.accuracy)}m` : ""}
-      </div>
-
-      <div className="mt-4 flex items-center justify-center">
-        <div className="relative h-[220px] w-[220px]">
-          {/* Ring */}
-          <div className="absolute inset-0 rounded-full border border-slate-200 bg-slate-50" />
-
-          {/* N/E/S/W */}
-          {["N", "E", "S", "W"].map((d, i) => (
-            <div
-              key={d}
-              className="absolute left-1/2 top-1/2 text-xs font-semibold text-slate-700"
-              style={{
-                transform: `translate(-50%, -50%) rotate(${i * 90}deg) translateY(-96px) rotate(${-i * 90}deg)`
-              }}
-            >
-              {d}
+              {kmToKaaba != null ? <Chip>{formatKm(kmToKaaba)} to Kaaba</Chip> : null}
             </div>
-          ))}
-
-          {/* Center dot */}
-          <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900" />
-
-          {/* Qibla arrow */}
-          <div
-            className="absolute left-1/2 top-1/2 h-[90px] w-[6px] -translate-x-1/2 origin-bottom"
-            style={{ transform: `translateX(-50%) translateY(-100%) rotate(${uiAngle}deg)` }}
-            aria-label="Qibla arrow"
-          >
-            <div className="h-full w-full rounded-full bg-emerald-700" />
-            <div className="absolute -top-2 left-1/2 h-0 w-0 -translate-x-1/2 border-l-[9px] border-r-[9px] border-b-[14px] border-l-transparent border-r-transparent border-b-emerald-700" />
           </div>
 
-          <div className="absolute inset-x-0 -bottom-7 text-center text-xs text-slate-500">
-            {deviceHeading == null ? "Works without compass sensors" : "Live compass active"}
-          </div>
-        </div>
-      </div>
-
-      {/* iOS permission CTA */}
-      {headingStatus.includes("Enable compass") ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-          <div className="text-xs text-amber-900">Enable motion/compass permission for live heading.</div>
           <button
             type="button"
-            onClick={requestCompassPermission}
-            className="rounded-lg bg-amber-900 text-white px-3 py-1.5 text-xs font-semibold hover:bg-amber-950 transition"
+            onClick={locate}
+            className={[
+              "shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2",
+              "text-xs font-semibold text-slate-800 hover:bg-slate-50 transition",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+            ].join(" ")}
           >
-            Enable compass
+            Locate me
           </button>
         </div>
-      ) : headingStatus ? (
-        <div className="mt-3 text-xs text-slate-500">{headingStatus}</div>
-      ) : null}
+      </div>
 
-      {loc ? (
-        <div className="mt-3 text-xs text-slate-500">
-          Your location: {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+      {/* Compass */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 soft-shadow">
+        <div className="mx-auto max-w-[360px]">
+          <div className="relative aspect-square w-full">
+            {/* Outer ring */}
+            <div className="absolute inset-0 rounded-full border border-slate-200 bg-white shadow-sm" />
+
+            {/* Ticks + labels rotate with heading (so “N” stays at top visually when compass is available) */}
+            <div
+              className="absolute inset-0"
+              style={{
+                transform: `rotate(${-clampDeg(displayHeading ?? 0)}deg)`,
+                transition: hasCompass ? "transform 80ms linear" : undefined
+              }}
+            >
+              {/* ticks */}
+              <div className="absolute inset-0 rounded-full">
+                {Array.from({ length: 60 }).map((_, i) => {
+                  const isMajor = i % 5 === 0;
+                  const isCardinal = i % 15 === 0;
+                  const len = isCardinal ? 14 : isMajor ? 10 : 6;
+                  return (
+                    <div
+                      key={i}
+                      className="absolute left-1/2 top-1/2"
+                      style={{
+                        transform: `rotate(${i * 6}deg) translateY(-48%)`,
+                        transformOrigin: "center"
+                      }}
+                    >
+                      <div
+                        className="rounded-full bg-slate-300"
+                        style={{
+                          width: isCardinal ? 2 : 1,
+                          height: len,
+                          transform: "translateX(-50%)"
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Cardinal letters */}
+              {[
+                { t: "N", deg: 0 },
+                { t: "E", deg: 90 },
+                { t: "S", deg: 180 },
+                { t: "W", deg: 270 }
+              ].map((c) => (
+                <div
+                  key={c.t}
+                  className="absolute left-1/2 top-1/2"
+                  style={{ transform: `rotate(${c.deg}deg) translateY(-46%)` }}
+                >
+                  <div
+                    className="text-xs font-semibold text-slate-700"
+                    style={{ transform: "translateX(-50%) rotate(-" + c.deg + "deg)" }}
+                  >
+                    {c.t}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Center hub */}
+            <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-300 bg-white shadow" />
+
+            {/* Subtle north reference needle */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative h-[2px] w-[68%] bg-slate-200 rounded-full">
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-slate-300" />
+              </div>
+            </div>
+
+            {/* Qibla needle */}
+            <div
+              className="absolute inset-0"
+              style={{
+                transform: `rotate(${needleRotation}deg)`,
+                transition: "transform 90ms linear"
+              }}
+            >
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                {/* Needle shaft */}
+                <div className="relative">
+                  <div className="h-[4px] w-[240px] rounded-full bg-emerald-700 shadow-sm" />
+                  {/* Kaaba tip */}
+                  <div className="absolute right-[-2px] top-1/2 -translate-y-1/2">
+                    <div className="h-8 w-8 rounded-xl bg-emerald-700 shadow-md flex items-center justify-center">
+                      <span className="text-white text-[10px] font-extrabold">🕋</span>
+                    </div>
+                  </div>
+                  {/* Tail dot */}
+                  <div className="absolute left-[-3px] top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-emerald-200 border border-emerald-300" />
+                </div>
+              </div>
+            </div>
+
+            {/* Inner circle */}
+            <div className="absolute inset-[14%] rounded-full border border-dashed border-slate-200" />
+          </div>
+
+          {/* Footer hint */}
+          <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <span className={["inline-block h-2 w-2 rounded-full", hasCompass ? "bg-emerald-500" : "bg-slate-300"].join(" ")} />
+              {hasCompass ? "Compass active (smooth)" : "Works without compass sensors"}
+            </div>
+            <div className="tabular-nums">
+              {geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : "—"}
+            </div>
+          </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
