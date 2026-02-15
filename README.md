@@ -50,3 +50,6 @@ Tabbed “Five Pillars of Islam” app with a Zakat calculator.
   usePersistedState(..., "salah") → "zakat"
 
 
+  
+
+
