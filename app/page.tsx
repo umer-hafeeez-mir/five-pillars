@@ -1041,11 +1041,7 @@ const handleFetchOnline = async () => {
                     <span className="font-semibold text-slate-900">What is Nisab?</span><br />
                     Nisab is the minimum amount of wealth a Muslim must have for one full lunar year before they are required to pay Zakat (obligatory charity).
                     <br />
-                    It is equal to:
-                    <br />
-                    • 87.48 grams of gold, or  
-                    <br />
-                    • 612.36 grams of silver.
+                    It is equal to: 87.48 grams of gold, or 612.36 grams of silver.
                     <br />
                     If your total eligible savings and assets are equal to or more than this amount for one lunar year, you must pay 2.5% as Zakat.
                     <br />
