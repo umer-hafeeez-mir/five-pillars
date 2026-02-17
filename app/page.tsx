@@ -1037,7 +1037,10 @@ const handleFetchOnline = async () => {
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
                     <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab </div>
                     <div className="mt-1 text-sm text-slate-600">Do you want to calculate Zakat based on silver or gold?</div>
-                    <info>Nisab is the minimum amount of wealth a Muslim must own for one full lunar year before becoming obligated to pay Zakat (mandatory charity).It was established by Prophet Muhammad (SAW) and is equivalent to: 87.48 grams of gold, or 612.36 grams of silver. If a person’s total eligible savings and assets meet or exceed this threshold for one lunar year, they are required to pay 2.5% of that amount as Zakat.</info>
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                      Nisab is the minimum amount of wealth a Muslim must own for one full lunar year before becoming obligated to pay Zakat (mandatory charity).
+                      It was established by Prophet Muhammad (SAW) and is equivalent to: 87.48 grams of gold, or 612.36 grams of silver. 
+                      If a person’s total eligible savings and assets meet or exceed this threshold for one lunar year, they are required to pay 2.5% of that amount as Zakat.</div>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
                         type="button"
