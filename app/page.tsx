@@ -1038,9 +1038,25 @@ const handleFetchOnline = async () => {
                     <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab </div>
                     <div className="mt-1 text-sm text-slate-600">Do you want to calculate Zakat based on silver or gold?</div>
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                      Nisab is the minimum amount of wealth a Muslim must own for one full lunar year before becoming obligated to pay Zakat (mandatory charity).
-                      It was established by Prophet Muhammad (SAW) and is equivalent to: 87.48 grams of gold, or 612.36 grams of silver. 
-                      If a person’s total eligible savings and assets meet or exceed this threshold for one lunar year, they are required to pay 2.5% of that amount as Zakat.</div>
+                    <span className="font-semibold text-slate-900">What is Nisab?</span><br />
+                    Nisab is the minimum amount of wealth a Muslim must have for one full lunar year before they are required to pay Zakat (obligatory charity).
+                    <br /><br />
+                    It was established by Prophet Muhammad (SAW) and is equal to:
+                    <br />
+                    • 87.48 grams of gold, or  
+                    <br />
+                    • 612.36 grams of silver.
+                    <br /><br />
+                    If your total eligible savings and assets are equal to or more than this amount for one lunar year, you must pay 2.5% as Zakat.
+                    <br /><br />
+                    <span className="font-semibold text-slate-900">Example:</span><br />
+                    Let’s say the value of silver (612.36g) is $500.
+                    <br /><br />
+                    • If your savings are $400, you do not pay Zakat because it is below Nisab.  
+                    <br />
+                    • If your savings are $1,000 and you have had it for one full lunar year, you pay 2.5% of $1,000, which is $25.
+                  </div>
+
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
                         type="button"
