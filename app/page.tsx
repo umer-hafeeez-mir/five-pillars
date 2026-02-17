@@ -1041,7 +1041,7 @@ const handleFetchOnline = async () => {
                    <span className="font-semibold text-slate-900">What is Nisab?</span><br />
                     Nisab is the minimum amount of wealth a Muslim must have for one full lunar year before they are required to pay Zakat.
                     If your total eligible savings and assets are equal to or more than this amount for one lunar year, you must pay 2.5% as Zakat.
-                    <br />
+                    <br /></div>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
                         type="button"
