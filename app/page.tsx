@@ -56,10 +56,10 @@ function HelpFab() {
         "fixed right-6 top-10 z-50",
         "inline-flex h-10 w-10 items-center justify-center rounded-full",
         "border border-slate-200 bg-white/90 backdrop-blur",
-        "text-slate-700 hover:text-emerald-900 hover:bg-white",
+        "text-slate-700 hover:text-teal-900 hover:bg-white",
         "shadow-[0_10px_25px_rgba(2,6,23,0.12)]",
         "transition",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
       ].join(" ")}
     >
       <span className="text-sm font-bold leading-none">?</span>
@@ -87,7 +87,7 @@ function CollapsibleCard({
         onClick={onToggle}
         className={[
           "group w-full text-left rounded-2xl transition",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         ].join(" ")}
         aria-expanded={open}
       >
@@ -101,8 +101,8 @@ function CollapsibleCard({
             className={[
               "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
               "border-slate-200 bg-white text-slate-700",
-              "group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:text-emerald-900",
-              "group-active:scale-[0.98] group-active:bg-emerald-100",
+              "group-hover:border-teal-200 group-hover:bg-gradient-to-br group-hover:from-teal-50 group-hover:to-cyan-50 group-hover:text-teal-900",
+              "group-active:scale-[0.98] group-active:bg-gradient-to-br group-active:from-teal-100 group-active:to-cyan-100",
               "shadow-sm"
             ].join(" ")}
             aria-hidden="true"
@@ -461,7 +461,7 @@ const handleFetchOnline = async () => {
 
   /* ---------------- PILLARS VIEW ---------------- */
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-cyan-50/20">
       <HelpFab />
 
       <button
@@ -472,8 +472,8 @@ const handleFetchOnline = async () => {
         className={[
           "fixed left-6 top-10 z-50 inline-flex h-9 w-9 items-center justify-center rounded-full",
           "border border-slate-200 bg-white text-slate-600",
-          "hover:bg-slate-50 hover:text-emerald-800",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+          "hover:bg-teal-50 hover:text-teal-800",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
           "transition"
         ].join(" ")}
       >
@@ -492,9 +492,9 @@ const handleFetchOnline = async () => {
         </svg>
       </button>
 
-      <header className="container-page pt-10 pb-4 text-center">
+      <header className="container-page pt-10 pb-4 text-center bg-gradient-to-r from-teal-50/90 via-cyan-50/80 to-teal-50/90 backdrop-blur-sm border-b border-teal-200/60">
         <div className="flex items-center justify-center max-w-5xl mx-auto px-4">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Five Pillars of Islam</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">Five Pillars of Islam</h1>
         </div>
 
         <div className="mt-6">
@@ -557,7 +557,7 @@ const handleFetchOnline = async () => {
                   className={[
                     "px-4 py-2 text-sm font-semibold rounded-lg transition",
                     zakatMode === "guided"
-                      ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                      ? "bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900 border border-teal-200"
                       : "text-slate-700"
                   ].join(" ")}
                 >
@@ -572,7 +572,7 @@ const handleFetchOnline = async () => {
                   className={[
                     "px-4 py-2 text-sm font-semibold rounded-lg transition",
                     zakatMode === "power"
-                      ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                      ? "bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900 border border-teal-200"
                       : "text-slate-700"
                   ].join(" ")}
                 >
@@ -596,7 +596,7 @@ const handleFetchOnline = async () => {
                         <div className="text-sm text-slate-600">
                           {zakatResult?.eligible ? "Zakat to pay" : "Zakat (not due)"}
                         </div>
-                        <div className="mt-1 text-3xl font-semibold text-emerald-900">
+                        <div className="mt-1 text-3xl font-semibold text-teal-900">
                           ₹ {formatINR(zakatResult?.eligible ? zakatResult?.zakat ?? 0 : 0)}
                         </div>
                         <div className="mt-2 text-xs text-slate-600">
@@ -614,7 +614,7 @@ const handleFetchOnline = async () => {
                         className={[
                           "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold",
                           zakatResult?.eligible
-                            ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+                            ? "border-teal-200 bg-gradient-to-br from-teal-100 to-cyan-100 text-teal-900"
                             : "border-slate-200 bg-white text-slate-700"
                         ].join(" ")}
                       >
@@ -653,7 +653,7 @@ const handleFetchOnline = async () => {
                         setZakatMode("guided");
                         setGuidedStep(0);
                       }}
-                      className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                      className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 text-sm font-semibold transition"
                     >
                       Calculate again
                     </button>
@@ -676,7 +676,7 @@ const handleFetchOnline = async () => {
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                    className="w-full rounded-xl border border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 text-teal-900 py-3 font-semibold transition"
                   >
                     Share
                   </button>
@@ -708,7 +708,7 @@ const handleFetchOnline = async () => {
                         className={[
                           "rounded-xl border px-3 py-2 text-sm font-semibold transition",
                           z.nisabBasis === "silver"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                             : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                         ].join(" ")}
                       >
@@ -721,7 +721,7 @@ const handleFetchOnline = async () => {
                         className={[
                           "rounded-xl border px-3 py-2 text-sm font-semibold transition",
                           z.nisabBasis === "gold"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                             : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                         ].join(" ")}
                       >
@@ -835,7 +835,7 @@ const handleFetchOnline = async () => {
                             className={[
                               "rounded-xl border px-3 py-2 text-sm font-semibold transition",
                               String(activeKarat).toLowerCase() === k
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                                 : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                             ].join(" ")}
                           >
@@ -984,7 +984,7 @@ const handleFetchOnline = async () => {
                       "w-full rounded-xl py-3 font-semibold transition",
                       !isRateValid
                         ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                        : "bg-emerald-800 hover:bg-emerald-900 text-white"
+                        : "bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white"
                     ].join(" ")}
                   >
                     Calculate Zakat
@@ -992,7 +992,7 @@ const handleFetchOnline = async () => {
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                    className="w-full rounded-xl border border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 text-teal-900 py-3 font-semibold transition"
                   >
                     Share
                   </button>
@@ -1023,7 +1023,7 @@ const handleFetchOnline = async () => {
                       <button
                         type="button"
                         onClick={() => setGuidedStep(1)}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                        className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Start
                       </button>
@@ -1045,7 +1045,7 @@ const handleFetchOnline = async () => {
                         className={[
                           "rounded-xl border px-4 py-3 text-sm font-semibold transition",
                           z.nisabBasis === "silver"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                             : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                         ].join(" ")}
                       >
@@ -1058,7 +1058,7 @@ const handleFetchOnline = async () => {
                         className={[
                           "rounded-xl border px-4 py-3 text-sm font-semibold transition",
                           z.nisabBasis === "gold"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                             : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                         ].join(" ")}
                       >
@@ -1070,7 +1070,7 @@ const handleFetchOnline = async () => {
                       <button
                         type="button"
                         onClick={() => setGuidedStep(2)}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                        className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Next
                       </button>
@@ -1154,7 +1154,7 @@ const handleFetchOnline = async () => {
                           "rounded-xl px-5 py-2.5 text-sm font-semibold transition",
                           !isRateValid
                             ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                            : "bg-emerald-800 hover:bg-emerald-900 text-white"
+                            : "bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white"
                         ].join(" ")}
                       >
                         Next
@@ -1200,7 +1200,7 @@ const handleFetchOnline = async () => {
                       <button
                         type="button"
                         onClick={() => setGuidedStep(4)}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                        className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Next
                       </button>
@@ -1224,7 +1224,7 @@ const handleFetchOnline = async () => {
                         className={[
                           "rounded-xl border px-4 py-3 text-sm font-semibold transition",
                           ownsGold
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                             : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                         ].join(" ")}
                       >
@@ -1236,7 +1236,7 @@ const handleFetchOnline = async () => {
                         className={[
                           "rounded-xl border px-4 py-3 text-sm font-semibold transition",
                           !ownsGold
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                             : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                         ].join(" ")}
                       >
@@ -1255,7 +1255,7 @@ const handleFetchOnline = async () => {
                       <button
                         type="button"
                         onClick={() => setGuidedStep(5)}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                        className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Next
                       </button>
@@ -1285,7 +1285,7 @@ const handleFetchOnline = async () => {
                               className={[
                                 "px-3 py-1.5 text-xs font-semibold rounded-md transition",
                                 ownsGold
-                                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                  ? "bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900 border border-teal-200"
                                   : "text-slate-700 hover:bg-slate-50"
                               ].join(" ")}
                             >
@@ -1299,7 +1299,7 @@ const handleFetchOnline = async () => {
                               className={[
                                 "px-3 py-1.5 text-xs font-semibold rounded-md transition",
                                 !ownsGold
-                                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                  ? "bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900 border border-teal-200"
                                   : "text-slate-700 hover:bg-slate-50"
                               ].join(" ")}
                             >
@@ -1323,7 +1323,7 @@ const handleFetchOnline = async () => {
                                   className={[
                                     "rounded-xl border px-3 py-2 text-sm font-semibold transition",
                                     String(activeKarat).toLowerCase() === k
-                                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                      ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                                       : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                                   ].join(" ")}
                                 >
@@ -1406,7 +1406,7 @@ const handleFetchOnline = async () => {
                       <button
                         type="button"
                         onClick={() => setGuidedStep(6)}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                        className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Next
                       </button>
@@ -1458,7 +1458,7 @@ const handleFetchOnline = async () => {
                       <button
                         type="button"
                         onClick={() => setGuidedStep(7)}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                        className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Next
                       </button>
@@ -1494,7 +1494,7 @@ const handleFetchOnline = async () => {
                       <button
                         type="button"
                         onClick={() => setShowSummary(true)}
-                        className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 text-sm font-semibold transition"
+                        className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-5 py-2.5 text-sm font-semibold transition"
                       >
                         Calculate Zakat
                       </button>
@@ -1507,7 +1507,7 @@ const handleFetchOnline = async () => {
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="w-full rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 py-3 font-semibold transition"
+                    className="w-full rounded-xl border border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 text-teal-900 py-3 font-semibold transition"
                   >
                     Share
                   </button>

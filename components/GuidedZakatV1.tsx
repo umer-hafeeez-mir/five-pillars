@@ -164,7 +164,7 @@ export default function GuidedZakatV1({
               className={[
                 "rounded-xl border px-3 py-3 text-sm font-semibold transition",
                 basis === "silver"
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                   : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
               ].join(" ")}
             >
@@ -177,7 +177,7 @@ export default function GuidedZakatV1({
               className={[
                 "rounded-xl border px-3 py-3 text-sm font-semibold transition",
                 basis === "gold"
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                   : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
               ].join(" ")}
             >
@@ -189,7 +189,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Next
             </button>
@@ -231,7 +231,7 @@ export default function GuidedZakatV1({
               onClick={goNext}
               className={[
                 "rounded-xl px-4 py-2 text-sm font-semibold transition",
-                canNext ? "bg-emerald-800 hover:bg-emerald-900 text-white" : "bg-slate-200 text-slate-500"
+                canNext ? "bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white" : "bg-slate-200 text-slate-500"
               ].join(" ")}
             >
               Next
@@ -271,7 +271,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Next
             </button>
@@ -310,7 +310,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Next
             </button>
@@ -349,7 +349,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Next
             </button>
@@ -387,7 +387,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Next
             </button>
@@ -419,7 +419,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Next
             </button>
@@ -451,7 +451,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Next
             </button>
@@ -495,7 +495,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Next
             </button>
@@ -528,7 +528,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Calculate Zakaat
             </button>
@@ -556,7 +556,7 @@ export default function GuidedZakatV1({
                     <div className="text-sm text-slate-600">
                       {zakatResult?.eligible ? "Zakat to pay" : "Zakat not due (below Nisab)"}
                     </div>
-                    <div className="mt-1 text-3xl font-semibold text-emerald-900">
+                    <div className="mt-1 text-3xl font-semibold text-teal-900">
                       ₹ {formatINR(zakatResult?.eligible ? zakatResult?.zakat : 0)}
                     </div>
                     <div className="mt-2 text-xs text-slate-600">
@@ -568,7 +568,7 @@ export default function GuidedZakatV1({
                     className={[
                       "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold",
                       zakatResult?.eligible
-                        ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+                        ? "border-teal-200 bg-gradient-to-br from-teal-100 to-cyan-100 text-teal-900"
                         : "border-slate-200 bg-slate-100 text-slate-700"
                     ].join(" ")}
                   >
@@ -621,7 +621,7 @@ export default function GuidedZakatV1({
             <button
               type="button"
               onClick={restartFlow}
-              className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 py-2 text-sm font-semibold transition"
             >
               Calculate again
             </button>

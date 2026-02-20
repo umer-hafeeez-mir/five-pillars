@@ -174,7 +174,7 @@ export default function Field({
           inputMode="decimal"
           className={[
             "w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-slate-900 outline-none",
-            "focus:border-brand-300 focus:ring-2 focus:ring-brand-100",
+            "focus:border-teal-300 focus:ring-2 focus:ring-teal-100",
             prefix ? "pl-9" : "",
             suffix ? "pr-10" : ""
           ].join(" ")}

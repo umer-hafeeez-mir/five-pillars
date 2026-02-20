@@ -10,56 +10,10 @@ type HomePageProps = {
 };
 
 /**
- * Inline “mosque skyline” background (SVG data URI).
- * This gives you the exact hero feel from the screenshot without needing an image file.
- */
-const MOSQUE_BG = `data:image/svg+xml;utf8,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="420" viewBox="0 0 1400 420">
-  <defs>
-    <linearGradient id="fade" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0.25"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="1"/>
-    </linearGradient>
-    <linearGradient id="mist" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#DCE7E1" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#DCE7E1" stop-opacity="0"/>
-    </linearGradient>
-    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="4"/>
-    </filter>
-  </defs>
-
-  <!-- soft mist -->
-  <rect width="1400" height="420" fill="url(#mist)"/>
-
-  <!-- skyline silhouettes (very light) -->
-  <g opacity="0.25" filter="url(#blur)" fill="#879B90">
-    <path d="M140 320c30-26 40-58 44-92 4-36 28-62 56-62s52 26 56 62c4 34 14 66 44 92v34H140v-34z"/>
-    <path d="M390 355V312c0-40 32-72 72-72s72 32 72 72v43H390z"/>
-    <path d="M620 355V300c0-46 38-84 84-84s84 38 84 84v55H620z"/>
-    <path d="M930 355V312c0-40 32-72 72-72s72 32 72 72v43H930z"/>
-    <path d="M1130 320c30-26 40-58 44-92 4-36 28-62 56-62s52 26 56 62c4 34 14 66 44 92v34h-200v-34z"/>
-
-    <!-- minarets -->
-    <path d="M250 355V210l18-18 18 18v145h-36z"/>
-    <path d="M251 205l17-16 17 16h-34z"/>
-    <path d="M1120 355V210l18-18 18 18v145h-36z"/>
-    <path d="M1121 205l17-16 17 16h-34z"/>
-  </g>
-
-  <!-- fade -->
-  <rect y="0" width="1400" height="420" fill="url(#fade)"/>
-</svg>
-`)}`;
-
-/**
  * Illustration-style icons.
- * These are intentionally simple/soft to match the screenshot.
- * If you share real assets later, we’ll swap these out.
  */
 function Illustration({ k }: { k: PillarKey }) {
-  const common = "w-14 h-14";
+  const common = "w-6 h-6";
   switch (k) {
     case "shahada":
       return (
@@ -152,39 +106,37 @@ function PillarCard({
   return (
     <button
       onClick={() => onOpen(k)}
-      className={[
-        "relative w-full text-center rounded-xl bg-white",
-        "border border-slate-200",
-        "shadow-[0_10px_25px_rgba(2,6,23,0.06)]",
-        "hover:shadow-[0_14px_34px_rgba(2,6,23,0.10)] hover:-translate-y-[1px]",
-        "transition-all duration-200",
-        "px-4 pt-4 pb-5"
-      ].join(" ")}
+      className="group relative flex w-full items-center gap-4 rounded-2xl bg-white border border-slate-200 p-4 text-left shadow-sm hover:shadow-lg hover:border-teal-300 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+      aria-label={`${p.tab} - ${p.tabHint}`}
     >
-      {badge ? (
-        <span className="absolute right-3 top-3 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold px-2 py-1">
-          {badge}
-        </span>
-      ) : null}
-
-      <div className="mx-auto flex items-center justify-center">
+      {/* Subtle gradient overlay on hover */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-teal-50/0 via-teal-50/50 to-cyan-50/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      
+      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100 group-hover:from-teal-200 group-hover:to-cyan-200 transition-all duration-300">
         <Illustration k={k} />
       </div>
 
-      <div className="mt-2 text-[13px] font-semibold text-slate-900">{p.tab}</div>
-      <div className="text-[11px] text-slate-500">{p.tabHint}</div>
-
-      <div className="mt-2 text-[11px] leading-snug text-slate-500">
-        {k === "zakat"
-          ? "Calculate and\nunderstand Zakat"
-          : k === "salah"
-          ? "Daily prayers & guidance"
-          : k === "hajj"
-          ? "Preparation & requirements"
-          : k === "sawm"
-          ? "Ramadan & voluntary fasts"
-          : "Declaration of belief"}
+      <div className="relative flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-base font-semibold text-slate-900">{p.tab}</span>
+          {badge ? (
+            <span className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-[10px] font-semibold px-2.5 py-0.5 shadow-sm">
+              {badge}
+            </span>
+          ) : null}
+        </div>
+        <span className="text-sm text-slate-600 mt-0.5 block">{p.tabHint}</span>
       </div>
+
+      <svg 
+        className="relative w-5 h-5 text-slate-400 shrink-0 group-hover:text-teal-500 transition-colors duration-300" 
+        fill="none" 
+        viewBox="0 0 24 24" 
+        stroke="currentColor"
+        aria-hidden="true"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      </svg>
     </button>
   );
 }
@@ -192,141 +144,205 @@ function PillarCard({
 export default function HomePage(props: HomePageProps) {
   const { onExplore, onSelectPillar } = props;
 
-  // Match screenshot: only Zakat shows “Available”
   const badgeFor = (k: PillarKey) => (k === "zakat" ? "Available" : null);
 
   return (
-    <section className="min-h-screen bg-[#F7F9F8]">
-      {/* Top hairline */}
-      <div className="h-px bg-slate-200/70" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-teal-50/20 relative overflow-hidden">
+      {/* Animated background pattern */}
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(20,184,166,0.15),transparent_50%)] animate-pulse" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(14,165,233,0.12),transparent_50%)] animate-pulse" style={{ animationDelay: '1s', animationDuration: '3s' }} />
+      </div>
 
-      <div className="px-4 py-10">
-        {/* Narrow centered column like the screenshot */}
-        <div className="mx-auto w-full max-w-[520px]">
-          {/* Hero card (white, soft bg, skyline) */}
-          <div className="relative rounded-[10px] bg-white border border-slate-200 shadow-[0_18px_40px_rgba(2,6,23,0.06)] overflow-hidden">
+      {/* Subtle grid pattern */}
+      <div 
+        className="absolute inset-0 opacity-[0.02]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(20,184,166,0.1) 1px, transparent 1px),
+                           linear-gradient(90deg, rgba(20,184,166,0.1) 1px, transparent 1px)`,
+          backgroundSize: '40px 40px'
+        }}
+      />
 
-            {/* skyline */}
-            <div
-              className="absolute inset-x-0 top-0 h-36 opacity-70"
-              style={{
-                backgroundImage: `url("${MOSQUE_BG}")`,
-                backgroundSize: "cover",
-                backgroundPosition: "center"
-              }}
-            />
-            {/* subtle fade */}
-            <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-white/10 via-white/40 to-white" />
-
-            <div className="relative px-6 pt-10 pb-6 text-center">
-              <h1 className="text-[22px] sm:text-[24px] font-semibold text-slate-900">
-                The Five Pillars of Islam
-              </h1>
-
-              <p className="mt-2 text-[12px] text-slate-500">
-                Simple, trustworthy tools to help you practice with clarity and intention.
-              </p>
-
-              <div className="mt-4 flex items-center justify-center">
-                <button
-                  onClick={onExplore}
-                  className="rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-[12px] font-semibold px-4 py-2 shadow-sm transition"
-                >
-                  Explore the Five Pillars
-                </button>
-              </div>
-
-              {/* Cards grid */}
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                {PILLARS_ORDER.map((k) => (
-                  <PillarCard key={k} k={k} onOpen={onSelectPillar} badge={badgeFor(k)} />
-                ))}
-              </div>
-
-              {/* Not sure where to begin panel */}
-              <div className="mt-6 rounded-xl border border-slate-200 bg-emerald-50/30 shadow-[0_10px_25px_rgba(2,6,23,0.05)] overflow-hidden">
-                <div className="px-6 pt-5 pb-4 text-center">
-                  <div className="text-[13px] font-semibold text-slate-900">
-                    Not sure where to begin?
-                  </div>
-                  <div className="mt-1 text-[11px] text-slate-500">
-                    Most people start with Zakat or Prayer.
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-center gap-3">
-                    <button
-                      onClick={() => onSelectPillar("zakat")}
-                      className="rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-[12px] font-semibold px-4 py-2 transition"
-                    >
-                      Calculate my Zakat
-                    </button>
-                    <button
-                      onClick={() => onSelectPillar("salah")}
-                      className="rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[12px] font-semibold px-4 py-2 transition border border-emerald-200"
-                    >
-                      Learn about Salah
-                    </button>
-                  </div>
-
-                  <div className="mt-5 flex justify-center">
-                    <ul className="text-left text-[11px] text-slate-600 space-y-1.5">
-                      <li className="flex gap-2">
-                        <span className="mt-[2px]">•</span>
-                        <span>Based on widely accepted Islamic principles</span>
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="mt-[2px]">•</span>
-                        <span>Transparent calculations and explanations</span>
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="mt-[2px]">•</span>
-                        <span>Educational support, not religious verdicts</span>
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="mt-[2px]">•</span>
-                        <span>No ads. No tracking. No pressure</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quote */}
-              <div className="mt-6 text-center">
-                <div className="text-[11px] italic text-slate-600">
-                  “Islam is built upon five pillars…”
-                </div>
-                <div className="mt-1 text-[10px] text-slate-500">
-                  — Sahih al-Bukhari & Muslim
-                </div>
-              </div>
-
-              {/* Footer */}
-             <div className="mt-6 flex items-center justify-center gap-5 text-[10px] text-slate-500">
-              <Link href="/help#getting-started" className="hover:text-slate-700 transition">
-                Getting started
-              </Link>
-              <Link href="/help#zakat" className="hover:text-slate-700 transition">
-                Zakat
-              </Link>
-              <Link href="/help#sources" className="hover:text-slate-700 transition">
-                Sources
-              </Link>
-              <Link href="/help#privacy" className="hover:text-slate-700 transition">
-                Privacy
-              </Link>
-              <Link href="/help#feedback" className="hover:text-slate-700 transition">
-                Feedback
-              </Link>
+      {/* Header */}
+      <header className="relative bg-gradient-to-r from-teal-50/90 via-cyan-50/80 to-teal-50/90 backdrop-blur-sm border-b border-teal-200/60">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse"></div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-teal-600">
+                Early Access
+              </span>
+              <span className="hidden sm:inline text-xs text-teal-700/80 ml-2">
+                A calm companion for the Five Pillars
+              </span>
             </div>
-
+            <div className="hidden sm:flex items-center gap-4 text-xs text-teal-700/80">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1 w-1 rounded-full bg-teal-500"></span>
+                Private, offline-first
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1 w-1 rounded-full bg-teal-500"></span>
+                No login. No ads.
+              </span>
             </div>
           </div>
-
-          {/* bottom breathing space (matches screenshot composition) */}
-          <div className="h-10" />
         </div>
-      </div>
-    </section>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative max-w-4xl mx-auto px-4 py-6 sm:py-8">
+        {/* Hero Section */}
+        <div className="mb-8 sm:mb-10">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-4 leading-tight">
+            Experience the{" "}
+            <span className="relative inline-block">
+              Five Pillars
+              <span className="absolute -inset-x-1 -bottom-1 h-2 rounded-full bg-gradient-to-r from-teal-400/60 to-cyan-400/60 blur-sm opacity-70" />
+            </span>{" "}
+            with clarity and calm.
+          </h1>
+          <p className="text-base sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
+            A modern companion that brings Shahada, Salah, Zakat, Sawm, and Hajj into one focused place — so you can
+            understand, track, and act with confidence, without distractions.
+          </p>
+        </div>
+
+        {/* Primary CTA with decorative background */}
+        <div className="mb-8 sm:mb-10 relative">
+          {/* Decorative elements around CTA */}
+          <div className="absolute -inset-4 bg-gradient-to-r from-teal-100/40 via-cyan-100/40 to-teal-100/40 rounded-2xl blur-xl opacity-50 animate-pulse" />
+          <div className="relative">
+            <button
+              onClick={() => onSelectPillar("zakat")}
+              className="w-full sm:w-auto min-h-[56px] px-8 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-semibold text-base rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 transform hover:scale-[1.02]"
+            >
+              Calculate my Zakat
+              <span className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-white/20 text-xs">
+                •
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Five Pillars Navigation */}
+        <div className="mb-8 sm:mb-10">
+          <div className="flex items-center justify-between mb-5 sm:mb-6">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">The Five Pillars</h2>
+              <p className="text-sm text-slate-500 mt-1 hidden sm:block">Tap a pillar to jump straight in.</p>
+            </div>
+            <button
+              onClick={onExplore}
+              className="text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors shrink-0"
+            >
+              Explore all
+            </button>
+          </div>
+
+          {/* Decorative background for pillars section */}
+          <div className="relative">
+            <div className="absolute -inset-2 bg-gradient-to-br from-white/60 via-teal-50/40 to-cyan-50/40 rounded-3xl blur-2xl opacity-60" />
+            <nav
+              aria-label="Five pillars navigation"
+              className="relative space-y-3 sm:space-y-4"
+            >
+              {PILLARS_ORDER.map((k) => (
+                <PillarCard key={k} k={k} onOpen={onSelectPillar} badge={badgeFor(k)} />
+              ))}
+            </nav>
+          </div>
+        </div>
+
+          {/* Right: “not sure where to begin” card */}
+
+        {/* Social proof / reassurance */}
+        <div className="mb-8 sm:mb-10">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-slate-600 mb-4">
+            <div className="inline-flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100 ring-1 ring-teal-200 text-sm font-semibold text-teal-700">
+                5×
+              </span>
+              <span>
+                Built around the{" "}
+                <span className="font-semibold text-slate-900">Five Pillars</span> – not generic to‑do lists.
+              </span>
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <span className="h-1 w-8 rounded-full bg-gradient-to-r from-teal-400 to-cyan-400" />
+              <span>No accounts, no feeds, just practice.</span>
+            </div>
+          </div>
+          
+          {/* Additional bullet points */}
+          <div className="bg-gradient-to-br from-teal-50/60 to-cyan-50/60 border border-teal-200/60 rounded-2xl p-4 sm:p-5">
+            <ul className="space-y-2.5 text-sm text-teal-900">
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 shrink-0" />
+                <span>Based on widely accepted Islamic principles</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 shrink-0" />
+                <span>Transparent calculations and explanations</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 shrink-0" />
+                <span>Educational Companion, not religious verdict</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Info Card */}
+        <div className="mb-8 sm:mb-10 relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-teal-100/50 to-cyan-100/50 rounded-2xl blur opacity-50" />
+          <div className="relative bg-gradient-to-br from-teal-50/80 to-cyan-50/70 border border-teal-200/60 rounded-2xl p-4 sm:p-5">
+            <div className="flex gap-3 sm:gap-4">
+              <div className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100 text-teal-700 text-sm font-semibold ring-1 ring-teal-200">
+                i
+              </div>
+              <p className="text-sm sm:text-base text-teal-900 leading-relaxed">
+                This app is an <span className="font-semibold">educational companion</span> — not a religious
+                verdict. Always confirm details with trusted scholars.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Links */}
+        <footer className="pt-6 sm:pt-8 border-t border-teal-200/60">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 text-sm text-teal-700/80">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-teal-400 to-cyan-400" />
+                Simple · Private · Offline‑friendly
+              </span>
+              <span className="hidden sm:inline-block h-1 w-6 rounded-full bg-teal-300/60" />
+              <span className="inline-flex items-center gap-1">
+                Sources curated from well‑known Islamic references
+              </span>
+            </div>
+            <nav className="flex flex-wrap items-center gap-3 sm:gap-4" aria-label="Footer navigation">
+              <Link href="/help#getting-started" className="hover:text-teal-900 transition-colors">
+                Getting started
+              </Link>
+              <Link href="/help#zakat" className="hover:text-teal-900 transition-colors">
+                Zakat
+              </Link>
+              <Link href="/help#sources" className="hover:text-teal-900 transition-colors">
+                Sources
+              </Link>
+              <Link href="/help#privacy" className="hover:text-teal-900 transition-colors">
+                Privacy
+              </Link>
+              <Link href="/help#feedback" className="hover:text-teal-900 transition-colors">
+                Feedback
+              </Link>
+            </nav>
+          </div>
+        </footer>
+      </main>
+    </div>
   );
 }

@@ -36,8 +36,8 @@ export default function HajjHome() {
               className={[
                 "shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold transition",
                 active === s.key
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                  ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
+                  : "border-slate-200 bg-white text-slate-800 hover:bg-teal-50/50"
               ].join(" ")}
             >
               <div className="leading-tight">{s.label}</div>
