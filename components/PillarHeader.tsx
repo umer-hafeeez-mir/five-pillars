@@ -41,16 +41,16 @@ export default function PillarHeader({
     <div className="text-center mt-8">
       {/* Icon block renders ONLY when hideIcon === false */}
       {!hideIcon && (
-        <div className="mx-auto w-12 h-12 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
+        <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 flex items-center justify-center text-teal-700">
           <Icon name={icon} />
         </div>
       )}
 
-      <h2 className={hideIcon ? "text-2xl font-semibold" : "mt-4 text-2xl font-semibold"}>
+      <h2 className={hideIcon ? "text-2xl font-semibold text-slate-900" : "mt-4 text-2xl font-semibold text-slate-900"}>
         {title}
       </h2>
 
-      <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+      <p className="mt-1 text-sm text-teal-700/80">{subtitle}</p>
     </div>
   );
 }

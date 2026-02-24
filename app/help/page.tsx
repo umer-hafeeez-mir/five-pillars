@@ -46,7 +46,7 @@ function CollapsibleSection({
         className={[
           "w-full text-left px-5 py-4",
           "flex items-center justify-between gap-4",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
           "transition"
         ].join(" ")}
       >
@@ -74,8 +74,8 @@ function Hr() {
 
 function Callout({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
-      <div className="text-xs font-semibold tracking-widest text-emerald-900/70">{title}</div>
+    <div className="mt-3 rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50/60 to-cyan-50/40 p-4">
+      <div className="text-xs font-semibold tracking-widest text-teal-900/70">{title}</div>
       <div className="mt-2 text-sm text-slate-700 leading-relaxed">{children}</div>
     </div>
   );
@@ -406,7 +406,7 @@ export default function HelpPage() {
               <a
                 href="mailto:umerhafeez.mir@outlook.com?subject=Five%20Pillars%20App%20Feedback"
                 className="inline-flex items-center justify-center rounded-xl
-                           bg-emerald-800 hover:bg-emerald-900
+                           bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700
                            text-white px-4 py-2 text-sm font-semibold
                            transition shadow-sm"
               >
@@ -464,7 +464,7 @@ export default function HelpPage() {
               </Link>
               <Link
                 href="/help#getting-started"
-                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 transition"
+                className="rounded-xl border border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 px-4 py-2 text-sm font-semibold text-teal-900 hover:from-teal-100 hover:to-cyan-100 transition"
               >
                 Getting started
               </Link>
@@ -480,7 +480,7 @@ export default function HelpPage() {
   const [openId, setOpenId] = useState<string>("");
 
   return (
-    <main className="min-h-screen bg-[#F7F9F8]">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-cyan-50/20">
       <div className="h-px bg-slate-200/70" />
 
       <div className="container-page pt-8 pb-14">

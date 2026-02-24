@@ -29,7 +29,7 @@ export default function NowSection() {
                 className={[
                   "rounded-xl border px-3 py-3 text-sm font-semibold transition text-left",
                   loc === x
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                    ? "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-900"
                     : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                 ].join(" ")}
               >
