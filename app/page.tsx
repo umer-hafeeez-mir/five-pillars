@@ -147,8 +147,7 @@ type GuidedStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 /* =================== Page =================== */
 
 export default function Page() {
-  const VIEW_KEY = "fp_view_v1";
-  const [view, setView] = usePersistedState<AppView>(VIEW_KEY, "welcome");
+  const [view, setView] = React.useState<AppView>("welcome");
   const [welcomeExiting, setWelcomeExiting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
