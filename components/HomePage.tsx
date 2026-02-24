@@ -164,49 +164,37 @@ export default function HomePage(props: HomePageProps) {
         }}
       />
 
-      {/* Header */}
-      <header className="relative bg-gradient-to-r from-teal-50/90 via-cyan-50/80 to-teal-50/90 backdrop-blur-sm border-b border-teal-200/60">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse"></div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-teal-600">
-                Early Access
-              </span>
-              <span className="hidden sm:inline text-xs text-teal-700/80 ml-2">
-                A calm companion for the Five Pillars
-              </span>
-            </div>
-            <div className="hidden sm:flex items-center gap-4 text-xs text-teal-700/80">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-teal-500"></span>
-                Private, offline-first
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-teal-500"></span>
-                No login. No ads.
-              </span>
-            </div>
+      {/* Floating Banner — no CTA button; Help sits below via z-index in page.tsx */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-r from-teal-50 via-cyan-50 to-teal-50 border-b border-teal-200/60 shadow-md">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse shrink-0" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-wider text-teal-600 shrink-0">
+              Early Access
+            </span>
+            <span className="hidden sm:inline text-xs text-teal-700/80 ml-2 truncate">
+            This app is currently in early access. We are actively building and improving it.
+            </span>
           </div>
         </div>
-      </header>
+      </div>
+
+      {/* Header Spacer */}
+      <div className="h-[60px]"></div>
 
       {/* Main Content */}
       <main className="relative max-w-4xl mx-auto px-4 py-6 sm:py-8">
         {/* Hero Section */}
         <div className="mb-8 sm:mb-10">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900 mb-4 leading-tight">
-            Experience the{" "}
+          <h1 className="text-3xl sm:text-4xl md:text-3xl font-semibold text-slate-900 mb-4 leading-tight">
+            Let's{" "}
             <span className="relative inline-block">
-              Five Pillars
+              Get
               <span className="absolute -inset-x-1 -bottom-1 h-2 rounded-full bg-gradient-to-r from-teal-400/60 to-cyan-400/60 blur-sm opacity-70" />
             </span>{" "}
-            with clarity and calm.
+            Started.
           </h1>
-          <p className="text-base sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
-            A modern companion that brings Shahada, Salah, Zakat, Sawm, and Hajj into one focused place — so you can
-            understand, track, and act with confidence, without distractions.
-          </p>
+
         </div>
 
         {/* Primary CTA with decorative background */}

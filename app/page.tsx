@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import HomePage from "@/components/HomePage";
+import WelcomeScreen from "@/components/WelcomeScreen";
 import PillarTabs from "@/components/PillarTabs";
 import PillarHeader from "@/components/PillarHeader";
 import Card from "@/components/Card";
@@ -53,13 +54,12 @@ function HelpFab() {
       aria-label="Help"
       title="Help"
       className={[
-        "fixed right-6 top-10 z-50",
+        "fixed right-6 top-16 z-[100]",
         "inline-flex h-10 w-10 items-center justify-center rounded-full",
-        "border border-slate-200 bg-white/90 backdrop-blur",
-        "text-slate-700 hover:text-teal-900 hover:bg-white",
-        "shadow-[0_10px_25px_rgba(2,6,23,0.12)]",
+        "border border-slate-200 bg-white shadow-md",
+        "text-slate-700 hover:text-teal-900 hover:bg-teal-50",
         "transition",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2"
       ].join(" ")}
     >
       <span className="text-sm font-bold leading-none">?</span>
@@ -129,7 +129,7 @@ function defaultGoldHoldings(): GoldHoldings {
 /* ---------------- Types ---------------- */
 
 type ZakatSection = "nisab" | "cash" | "metals" | "other" | "deductions" | null;
-type AppView = "home" | "pillars";
+type AppView = "welcome" | "home" | "pillars";
 type ZakatMode = "guided" | "power";
 /**
  * Guided steps:
@@ -148,16 +148,21 @@ type GuidedStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export default function Page() {
   const VIEW_KEY = "fp_view_v1";
-  const [view, setView] = usePersistedState<AppView>(VIEW_KEY, "home");
+  const [view, setView] = usePersistedState<AppView>(VIEW_KEY, "welcome");
+  const [welcomeExiting, setWelcomeExiting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Ensure first-ever open lands on Home (if no key present)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(VIEW_KEY);
-      if (saved === null) setView("home");
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setMounted(true);
   }, []);
+
+  const handleWelcomeContinue = useCallback(() => {
+    setWelcomeExiting(true);
+    setTimeout(() => {
+      setView("home");
+      setWelcomeExiting(false);
+    }, 320);
+  }, [setView]);
 
   const [active, setActive] = usePersistedState<PillarKey>("fp_active_tab_v1", "zakat");
 
@@ -448,6 +453,42 @@ const handleFetchOnline = async () => {
     setActive(k);
     setView("pillars");
   };
+
+  /* Avoid SSR/localStorage issues: render a safe shell until client has mounted. */
+  if (!mounted) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-teal-50/90 via-cyan-50/80 to-teal-50/90 flex items-center justify-center">
+        <div className="text-teal-700 font-medium">Loading…</div>
+      </main>
+    );
+  }
+
+  /* ---------------- WELCOME VIEW (first screen, swipe to home) ---------------- */
+  /* To show updates/notifications: pass announcement={{ badge, title, message }} or children to WelcomeScreen. */
+  if (view === "welcome") {
+    return (
+      <div className="relative min-h-screen overflow-hidden">
+        {/* Home sits behind so it’s revealed when welcome slides left */}
+        <div className="absolute inset-0 z-0">
+          <main className="min-h-screen">
+            <HelpFab />
+            <HomePage onExplore={() => setView("pillars")} onSelectPillar={(k) => goToPillar(k)} />
+          </main>
+        </div>
+        <div
+          className={`absolute inset-0 z-10 transition-transform duration-300 ease-out ${
+            welcomeExiting ? "-translate-x-full" : "translate-x-0"
+          }`}
+          aria-hidden={welcomeExiting}
+        >
+          <WelcomeScreen
+            onContinue={handleWelcomeContinue}
+            buttonLabel="Continue"
+          />
+        </div>
+      </div>
+    );
+  }
 
   /* ---------------- HOME VIEW ---------------- */
   if (view === "home") {
