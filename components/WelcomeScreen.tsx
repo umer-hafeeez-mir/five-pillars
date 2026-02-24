@@ -25,10 +25,9 @@ export default function WelcomeScreen({
   children,
   buttonLabel = "Continue",
 }: WelcomeScreenProps) {
-  // Ensure boolean value + allow proper TS narrowing
-  const hasAnnouncement = Boolean(
-    announcement?.title || announcement?.message || announcement?.badge
-  );
+  // Keep EXACT original behavior (string | undefined), just like your version
+  const hasAnnouncement =
+    announcement?.title ?? announcement?.message ?? announcement?.badge;
 
   const showCustomContent = Boolean(children);
 
@@ -54,19 +53,19 @@ export default function WelcomeScreen({
         <div className="w-full max-w-lg mx-auto mb-8 min-h-[64px] flex flex-col justify-center">
           {showCustomContent ? (
             <div className="text-slate-700 leading-relaxed">{children}</div>
-          ) : announcement && hasAnnouncement ? (
+          ) : hasAnnouncement ? (
             <div className="rounded-2xl border border-teal-200 bg-white/80 backdrop-blur px-5 py-4 text-left shadow-sm">
-              {announcement.badge && (
+              {announcement?.badge && (
                 <span className="inline-block text-[10px] font-semibold uppercase tracking-wider text-teal-600 bg-teal-100 px-2 py-0.5 rounded-full mb-2">
                   {announcement.badge}
                 </span>
               )}
-              {announcement.title && (
+              {announcement?.title && (
                 <h2 className="text-lg font-semibold text-slate-900">
                   {announcement.title}
                 </h2>
               )}
-              {announcement.message && (
+              {announcement?.message && (
                 <p className="mt-1 text-sm text-slate-600 leading-relaxed">
                   {announcement.message}
                 </p>
@@ -85,7 +84,7 @@ export default function WelcomeScreen({
           )}
         </div>
 
-        {/* CTA */}
+        {/* CTA — Keep "Ready to begin?" and Continue button at bottom */}
         <div className="w-full max-w-sm mx-auto mt-auto pt-4">
           <p className="text-sm text-teal-800/90 mb-4">Ready to begin?</p>
           <button
