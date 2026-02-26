@@ -128,14 +128,18 @@ export function calculateZakat(form: ZakatForm) {
     }
   }
 
-  // ✅ Gold value = sum across all buckets (each adjusted by purity)
-  const goldValue =
-    n(holdings["24k"].grams) * n(holdings["24k"].rate) * 1.0 +
-    n(holdings["22k"].grams) * n(holdings["22k"].rate) * 0.916 +
-    n(holdings["18k"].grams) * n(holdings["18k"].rate) * 0.75 +
-    n(holdings.custom.grams) *
-      n(holdings.custom.rate) *
-      karatToPurityFactor("custom", n(holdings.custom.purityPct));
+  // ✅ Gold value = sum across all buckets
+// Rates entered in UI are already per purity,
+// so DO NOT apply purity factor again here.
+// (Purity adjustment is only used for Nisab derivation.)
+
+const goldValue =
+  n(holdings["24k"].grams) * n(holdings["24k"].rate) +
+  n(holdings["22k"].grams) * n(holdings["22k"].rate) +
+  n(holdings["18k"].grams) * n(holdings["18k"].rate) +
+  n(holdings.custom.grams) *
+    n(holdings.custom.rate) *
+    (clampPct(n(holdings.custom.purityPct)) / 100);
 
   const silverGrams = n(form.silverGrams);
   const silverRate = n(form.silverRate);
