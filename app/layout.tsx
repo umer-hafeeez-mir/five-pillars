@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { VWOScript } from "vwo-smartcode-nextjs";
 
 export const metadata: Metadata = {
   title: "Five Pillars of Islam",
@@ -11,10 +12,16 @@ export const viewport: Viewport = {
   themeColor: "#185a38",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <head>
+        <VWOScript accountId="1200454" />
+
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="mobile-web-app-capable" content="yes" />
