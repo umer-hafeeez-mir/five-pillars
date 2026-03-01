@@ -14,7 +14,7 @@
     "next-pwa": "5.6.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "vwo-smartcode-nextjs": "^latest-version"
+    "vwo-smartcode-nextjs": "latest"
   },
   "devDependencies": {
     "@types/node": "20.14.15",
