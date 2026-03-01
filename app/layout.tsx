@@ -10,6 +10,19 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#185a38",
 };
+// app/layout.tsx
+import { VWOScript } from 'vwo-smartcode-nextjs';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <VWOScript accountId="YOUR_ACCOUNT_ID" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
