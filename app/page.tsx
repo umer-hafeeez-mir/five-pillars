@@ -1077,7 +1077,11 @@ const handleFetchOnline = async () => {
                     <div className="text-[11px] tracking-widest text-slate-500 font-semibold">GUIDED FLOW</div>
                     <div className="mt-2 text-base font-semibold text-slate-900">1) Choose your Nisab </div>
                     <div className="mt-1 text-sm text-slate-600">Do you want to calculate Zakat based on silver or gold?</div>
-
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                   <span className="font-semibold text-slate-900">What is Nisab?</span><br />
+                    Nisab is the minimum amount of wealth a Muslim must have for one full lunar year before they are required to pay Zakat.
+                    If your total eligible savings and assets are equal to or more than this amount for one lunar year, you must pay 2.5% as Zakat.
+                    <br /></div>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
                         type="button"
